@@ -1,0 +1,169 @@
+#!/bin/sh
+
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/mnt/root/bin:/mnt/root/sbin:/mnt/root:/mnt/cf/bin:/mnt/root/usr/bin
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devpts devpts /dev/pts
+  
+ifconfig lo 127.0.0.1 up
+route add -net 127.0.0.0 netmask 255.0.0.0 lo
+xuartctl --server
+dioctl --server > /dev/null 2>&1 
+#canctl -s 127.0.0.1 -b 125000 > dev/null 2>&1
+
+# If the RESET switch is being pushed, 
+# set the CONSOLE to the DB9 port (/dev/pts/#)
+eval `ts7500ctl --getdio`
+let dio9="(dio >> 9) & 0x1"
+XCONSOLE=0
+
+if [ "$dio9" == "1" ]; then
+  export CONSOLE=/dev/ttyS0
+else
+  eval `xuartctl --server --port 0 </dev/null 2>&1`
+  if [ "$ttyname" == "" ]; then
+    export CONSOLE=/dev/ttyS0
+  else
+    export CONSOLE=$ttyname
+    XCONSOLE=1
+    # If the RESET switch is being pushed, wait until released
+    while [ "$dio9" == "0" ]; do
+    	eval `ts7500ctl --getdio`
+    	let dio9="(dio >> 9) & 0x1"
+    done
+  fi
+fi
+                
+let x=`devmem 0x79000040`
+sec=$((x / 100000))
+tenths=$((x % 100000 / 1000))
+export BOOTTIME=`printf "%d.%02d" $sec $tenths`
+
+setconsole $CONSOLE
+stty -F $CONSOLE ospeed 115200 sane > /dev/null 2>&1
+hostname ts7500                                   
+ts7500ctl --resetswitchon --setrng --getrtc --autofeed 2 -d
+ts7500ctl --loadfpga=ts7500_bitstream.vme.gz
+
+# Get the model # and boot device (NAND, mSD, SPI flash)
+eval `ts7500ctl --info`
+export bootdev model
+
+# If this is a 4500/8200, we need to set DIO-7 HIGH
+# (EN_USB_5V) for the USB's to work
+if [ "$model" = "0x4500" ]; then
+	eval `ts7500ctl --getdioreg`
+	let diodir="diodir | (1<<7)"
+	let dio_out="dio_out | (1<<7)"
+	ts7500ctl --setdio $dio_out --setdiodir $diodir
+fi
+
+# If there is a USB drive, mount it
+# If it has 'tsinit', execute it
+# (this allows software auto-update)                                
+devmem 0xc8000004 32 0x106
+devmem 0xcc000060 32 0x1
+let x=`devmem 0xcc000068`
+let y=`devmem 0xcc000064`
+x=$(((x | y) & 0x1))
+if [ "$x" -eq 1 ]; then
+  (
+        ts7500ctl --redledon
+	mount -t tmpfs tmpfs /lib/modules
+	tar -x -z -f /modules.tar.gz -C /
+	modprobe scsi_mod
+	modprobe sd_mod
+	modprobe usbcore
+	modprobe ehci_hcd
+	modprobe usb_storage
+	modprobe smscusbnet
+	modprobe smsc9500
+	modprobe ohci_hcd
+	umount /lib/modules
+	x=0
+	while [ "$x" -lt 150 -a ! -e /sys/block/sda ]; do
+		x=$((x+1))
+		sleep .1
+	done
+	mount -o ro /dev/sda1 /mnt/usbdev
+	if [ -x /mnt/usbdev/tsinit ]; then 
+		/mnt/usbdev/tsinit <$CONSOLE >$CONSOLE 2>&1
+	fi
+	umount /mnt/usbdev
+	ts7500ctl --redledoff
+  ) &
+fi
+
+(
+  mount -t tmpfs none /dev/shm
+  ifconfig eth0 10.0.2.221 
+  telnetd
+  mount -t tmpfs tmpfs /tmp
+
+  # If booted from NAND, mount NAND's Linux partition
+  # If booted from mSD, mount mSD's Linux partition
+    
+  # Model: 7550, 7551, etc. (NOT 7500) -- these boards have NAND
+  if [ "$model" != "0x7500" ]; then
+    nandctl -X -z 131072 --nbdserver lun0:disc,lun0:part1,lun0:part2,lun0:part3,lun0:part4
+    nbd-client 127.0.0.1 7525 /dev/nbd0
+    nbd-client 127.0.0.1 7526 /dev/nbd1
+    nbd-client 127.0.0.1 7527 /dev/nbd2
+    nbd-client 127.0.0.1 7528 /dev/nbd3
+    nbd-client 127.0.0.1 7529 /dev/nbd4
+    if [ "$bootdev" == "0x0" ]; then
+      mount -oro /dev/nbd3 /mnt/root
+    fi
+  fi
+ 
+  # Model: 7500 or 7551, 7552, etc.  (NOT 7550) -- these boards have mSD
+  if [ "$model" != "0x7550" ]; then
+    eval `sdctl -z 65536 --nbdserver lun0:disc,lun0:part1,lun0:part2,lun0:part3,lun0:part4 2>&1`
+    if [ "$cardsize_sectors" == "0" ]; then
+      killall sdctl >> $CONSOLE 2>&1
+    else
+      nbd-client 127.0.0.1 7500 /dev/nbd5
+      nbd-client 127.0.0.1 7501 /dev/nbd6
+      nbd-client 127.0.0.1 7502 /dev/nbd7
+      nbd-client 127.0.0.1 7503 /dev/nbd8
+      nbd-client 127.0.0.1 7504 /dev/nbd9
+      if [ "$bootdev" == "0x1" ]; then
+        mount -oro /dev/nbd9 /mnt/root
+      fi
+      #ADDED
+      #fsck -a /dev/nbd5
+      /bin/mount -o ro /dev/nbd5 /mnt/cf
+      #fsck -a /dev/sda1
+      #mount /dev/sda1 /mnt/cf/storage
+      #/bin/mount /dev/sda1 2&>1 > /1
+    fi
+  fi
+
+  # Software auto-update  
+  if [ -x /mnt/root/tsinit ]; then
+    /mnt/root/tsinit $XCONSOLE < $CONSOLE > $CONSOLE 2>&1
+  fi
+
+  /www/apache/bin/httpd
+  /mnt/root/bin/dropbear 
+  /mnt/cf/nsv/startup &
+  /mnt/cf/nsv/supplement &
+  
+) </dev/null >/dev/null 2>&1 &
+
+(
+  export ENV=/shinit
+  exec setsid cttyhack /bin/sh -i
+) <$CONSOLE >$CONSOLE 2>&1
+wait
+
+if [ -e /mnt/root/sbin/init ]; then
+  killall busybox telnetd >/dev/null 2>&1
+
+  cd /mnt/root
+  pivot_root . ./initrd
+  ./bin/mount -n --move ./initrd/sys ./sys
+  ./bin/mount -n --move ./initrd/proc ./proc
+  exec ./usr/sbin/chroot . ./sbin/init < .$CONSOLE > .$CONSOLE 2>&1
+fi
+

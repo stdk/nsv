@@ -1,0 +1,46 @@
+#!/bin/bash
+
+#this script should be executed to correctly install nsv software
+#it presumes, that there is sdcard dump in /mnt/cf mounted in readonly mode
+
+echo "Copying startup script to / ..."
+cp /mnt/cf/software/linuxrc-fastboot /linuxrc-fastboot
+
+echo "Installing /etc configuration..."
+cp /mnt/cf/software/etc/* /etc/
+
+echo "Installing symbolic links to important executables..."
+ln -s /mnt/cf/software/sqlite /bin/sqlite
+ln -s /mnt/cf/python_distr/python /bin/python
+
+echo "Remounting /mnt/root in rw mode..."
+mount -o remount,rw /mnt/root
+
+echo "Installing apache..."
+cp -R /mnt/cf/software/www /mnt/root/
+ln -s /mnt/root/www /
+echo "Installing content symlinks to /www/apache/htdocs..."
+ln -s /var/run /mnt/root/www/apache/logs
+ln -s /mnt/cf/nsv/ui /www/apache/htdocs/
+ln -s /mnt/cf/storage/events.bin /www/apache/htdocs/events.bin
+ln -s /mnt/cf/storage/events_cash.bin /www/apache/htdocs/events_cash.bin
+
+echo "Install dropbear..."
+mkdir /etc/dropbear
+cp /mnt/cf/software/dropbear/dropbear /mnt/root/bin/
+/mnt/cf/software/dropbear/dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key
+
+echo "Install libraries from..."
+cp /mnt/cf/software/lib/* /mnt/root/lib/
+
+echo "Remounting /mnt/root in ro mode..."
+mount -o remount,ro /mnt/root
+
+echo "Preparing /mnt/cf/storage ..."
+mount -o remount,rw /mnt/cf
+mkdir /mnt/cf/storage/
+mount -o remount,ro /mnt/cf
+mount /dev/sda1 /mnt/cf/storage
+
+echo "Preparing nsv database..."
+/bin/sqlite /mnt/cf/storage/db "$(cat /mnt/cf/scripts/db_create)"

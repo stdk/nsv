@@ -1,0 +1,1 @@
+CREATE TABLE device(addr text,sn text,id int);

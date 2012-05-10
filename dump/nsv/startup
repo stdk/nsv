@@ -1,0 +1,23 @@
+#STORAGE=$(mount | grep -c /mnt/cf/storage)
+while [ "$(mount | grep -c /mnt/cf/storage)" == "0" ]
+do
+ sleep 3 
+ echo "/mnt/cf/storage : mount"
+ /bin/mount /dev/sda1 /mnt/cf/storage 
+done
+
+export START_STOP_DAEMON=/mnt/root/sbin/start-stop-daemon
+export CANCTL=/sbin/canctl
+export INDEX=/mnt/cf/nsv/ui/index.html
+export DEVICES=/mnt/cf/storage/devices
+export DEVICES_NEW=/mnt/cf/storage/devices.new
+export DEVICES_SAVE="mv $DEVICES_NEW $DEVICES"
+export STORAGE=/mnt/cf/storage/events.bin 
+export STORAGE_CASH=/mnt/cf/storage/events_cash.bin
+export RESTART=/mnt/cf/nsv/restart
+export FIRMWARE_DIR=/mnt/cf/storage/firmware
+export EVENT_STORAGE_SIZE=300
+export DB=/mnt/cf/storage/db
+
+cd /mnt/cf/nsv
+./nsv 2>> /mnt/cf/storage/log &

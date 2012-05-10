@@ -1,0 +1,43 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="http://$host/ui/js/jquery-1.4.4.min.js"></script>
+<script type="text/javascript">
+window.onload = function()
+{
+	//submit = document.getElementById('submit')
+	//submit.
+
+	if('$result' == 'None') {
+	 jQuery('#result').css('display','none')
+	 return
+	}
+
+	replacement = { 
+		'-5' : 'Ошибка ввода/вывода файловой системы',
+		'-4' : 'Недопустимое имя файла',
+		'-3' : 'Недопустимый адрес устройства',
+		'-2' : 'Некорректный запрос',
+		'-1' : 'Нет доступа к серверу',
+	     '0' : 'Обновляется прошивка на устройстве $addr',
+		 '1' : 'Сервер : не указана команда, запрос некорректен',
+		 '2' : 'Сервер : указанная команда не поддерживается',
+		 '3' : 'Сервер : один или более параметров команды содержит недопустимое значение',
+		 '4' : 'Сервер : при выполнении команды произошла ошибка',
+		 '5' : 'Сервер : устройство не найдено или в данный момент недоступно',
+		 '6' : 'Сервер : в данный момент на устройстве выполняется другая команда',
+		 '7' : 'Сервер : ошибка ввода/вывода файловой системы',
+	}
+	
+	jQuery('#result').text('[$result] ' + replacement['$result'])
+}
+</script>
+</head>
+<body>
+<div id="result"></div>
+<form enctype="multipart/form-data" method="POST" action="/" >
+Адрес:<input type="text" size="4" name="addr" value="$addr" />
+<input type="file" name="firmware" />
+<input id="submit" type="submit" />
+</form>
+</body></html>

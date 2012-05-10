@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript">
+
+window.onload = function() {
+
+document.title = 'nsv: ' + window.location.hostname 
+
+function url(addr)
+{
+	return 'http://'+window.location.hostname+addr
+}
+
+function addStyle(address)
+{
+	var node = document.createElement('link')
+	node.type = 'text/css'
+	node.rel = 'stylesheet'
+	node.href = url(address)
+	this.appendChild(node)
+}
+
+function addScript(address)
+{
+	var node = document.createElement('script')
+	node.type = 'text/javascript'
+	node.src = url(address)
+	node.charset = 'utf-8'
+	this.appendChild(node)
+}
+
+var head = document.getElementsByTagName("head")[0];
+
+addStyle.call(head,'/ui/css/smoothness/jquery-ui-1.8.6.custom.css')
+addStyle.call(head,'/ui/css/nsv.css')
+addStyle.call(head,'/ui/datatables/css/demo_page.css')
+addStyle.call(head,'/ui/datatables/css/demo_table_jui.css')
+
+chain = [ '/ui/js/jquery-1.4.4.min.js',
+          '/ui/js/jquery-ui-1.8.6.custom.min.js',
+          '/ui/js/string.js',
+          '/ui/datatables/js/jquery.dataTables.min.js',
+          '/ui/datatables/js/jquery.dataTables.fnReloadAjax.js',
+          '/ui/js/nsv.js' ]
+timeout = [400,100,100,100,100,0]
+
+var loader = function() {}
+for(var i=chain.length-1;i>=0;i--) {
+	var x = function() {
+		var prev = loader
+		var idx = i
+		loader = function() {
+			addScript.call(head,chain[idx])
+			setTimeout(prev,timeout[idx])
+		}
+	}
+	x()
+}
+
+loader()
+
+}
+
+</script>
+</head>
+<body>
+
+<div id="info"></div>
+
+<table id="dev-data" class="display" style="width:100%" cellpadding="0" cellspacing="0" border="0">
+    <thead><tr>
+            <th>Статус</th>
+            <th>Адрес</th>
+            <th>Серийный номер</th>
+            <th>Версия</th>
+            <th>Время</th>
+            <th>Активность</th>
+            <th>События</th>
+            <th>Ошибки</th>
+            <th>Прогресс</th>
+     </tr></thead>
+    <tbody></tbody>
+</table>
+
+<div id="tabs">
+  <ul>
+	  <li><a href="#tab-datetime">Дата и время</a></li>
+	  <li><a href="#tab-version">Версия</a></li>
+	  <li><a href="#tab-firmware-update">Обновление прошивки</a></li>
+	  <li><a href="#tab-add-adbk">Добавление АДБК</a></li>
+  </ul>
+
+  <div id="tab-datetime">
+    Дата: <input type="text" id="date" size="11">
+    Время: <input type="text" id="hours" size="2">:<input type="text" id="minutes" size="2">
+    <button id="refresh-datetime" style="">Обновить</button>
+	  <button id="set-datetime">Установить</button>
+  </div>
+
+  <div id="tab-version"></div>
+  <div id="tab-firmware-update"></div>
+	<div id="tab-add-adbk">
+		IP-адрес: <input type="text" id="adbk-addr" size="15">
+		<button id="button-add-adbk">Добавить</button>
+	</div>
+
+</div>
+
+</body>
+</html>

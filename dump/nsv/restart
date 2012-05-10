@@ -1,0 +1,5 @@
+killall nsv
+killall canctl
+
+/mnt/cf/nsv/startup
+

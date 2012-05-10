@@ -1,0 +1,206 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- version 0.3.0 -->
+<html>
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+<script type="text/javascript" src="ui/js/jquery-1.4.4.min.js"></script> 
+<style type="text/css">
+* {	margin: 0px; padding: 0px; }
+.menu {
+	font-family: "Arial";
+	font-size:14px;
+	float:right;
+	margin-right: 180px;
+	
+	position: relative;
+}
+.menu ul {
+	height:30px;
+	list-style:none;
+}
+.menu li { float:left; }
+.menu li a {
+	background: #555555;
+	color:#cccccc;
+	display:block;
+	line-height:30px;
+	padding:0px 25px;
+	text-align:center;
+}
+.menu li a:hover, .menu ul li:hover a{
+	background: #2580a2;
+	color:#FFFFFF;
+	text-decoration:none;
+}
+.menu li ul{
+	background:#555555;
+	visibility:hidden;
+	position: absolute;
+	display:block;
+}
+.menu li:hover ul{ visibility: visible; }
+.menu li li {
+	display: block;
+	float: none;
+}
+.menu li:hover li a{ background:#555555; }
+.menu li ul a{
+	display:block;
+	height:30px;
+	text-align:left;
+}
+.menu li ul a:hover, .menu li ul li:hover a{
+	background: #2580a2;
+	color:#ffffff;
+	text-decoration:none;
+}
+
+#info {
+	margin-bottom: 10px;
+}
+
+#progress {
+	height:100px;
+	background: green;
+	position: relative;
+	float: left;
+}
+
+#result {
+	background: white;
+	
+}
+
+h1 {
+        font-size:18px;
+}
+
+tr.device:hover {
+        background-color:#E8FCE8;
+}
+
+tr.deviceHeader {
+        background-color:lightgray;
+        text-align:center;
+        font-family:verdana,arial,helvetica;
+        font-size:14px;
+}
+
+.devices {
+        border-collapse:collapse;
+}
+
+.devices td {
+	padding: 3px 3px 3px 3px;
+}
+
+.device
+{
+        font-family: "Lucida Sans Unicode", "Lucida Grande", Sans-Serif;
+        font-size: 14px;
+        margin: 45px;
+        border-collapse: collapse;
+}
+
+</style>
+<script type="text/javascript" >
+function parseProgress(text)
+{
+	try {
+		addrRegex = /Address = ([0-9A-F]{4}),/
+		progressRegex = /position = (\d{1,2})%/
+
+		matchAddr = addrRegex.exec(text)[1]
+		matchProgress = progressRegex.exec(text)[1]
+
+		return {'addr':matchAddr,'progress':matchProgress}
+	} catch(e) { return false; }	
+}
+
+function updateInfo() {
+	try {
+	$.ajax({
+		url: 'cgi-bin/node_echo?ip=show',
+  	success: function(data) {
+			$('#info_proxy').html(data)
+			progress()
+  	}
+	});
+
+} catch(e) {alert(e); }
+}
+
+function progress() {
+	$.ajax({
+		url: 'cgi-bin/cmg.cgi?e',
+ 		success: function(data) {
+			var proxy = $('#info_proxy')
+			var presult = parseProgress(data)
+			if(presult) {
+				$('td#dvcid',proxy).each(function(index) {
+					if(this[index].html() == presult.addr) {
+						this[i].parent.insertCell(this[i].parent.cells.length).innerHTML = presult.progress + '%'
+					}
+				})				
+			}
+			$('#info').html(proxy.html())
+ 		}
+	});
+}
+
+$(document).ready(function() {
+	$.ajaxSetup({ cache: false });
+
+	updateInfo()
+	var timer = setInterval(updateInfo,5000)
+	
+	$('a[name=cmd]').click(function() {
+		$.ajax({
+			url: this.href,
+  		success: function(data) {
+    		$('#result').html(data);
+  		}
+		})
+		return false
+	})
+})
+</script>
+<title>Вузловий сервер</title>
+</head>
+<body id="body">
+
+<div id="info_proxy" style="display:none"></div>
+<div id="info">Info</div>
+
+<div class="menu">
+<ul>
+<li id="current"><a>Сервер вестибюлю</a>
+	<ul>
+	<li><a href="cgi-bin/cmg.cgi?v" name="cmd">Версія ПО</a></li>
+	<li><a href="cgi-bin/cmg.cgi?w" name="cmd">Переглянути касові операції</a></li>
+	<li><a href="cgi-bin/cmg.cgi?q" name="cmd">Перезавантаження</a></li>
+	</ul>
+</li>
+<li><a>АДБК</a>
+	<ul>
+	<li><a href="cgi-bin/cmg.cgi?t" name="cmd">Сканування</a></li>
+	</ul>
+</li>
+<li><a>CAN</a>
+	<ul>
+	<li><a href="cgi-bin/cmg.cgi?n" name="cmd">Сканування нових пристроїв</a></li>
+	</ul>
+</li>
+<li><a>Час</a>
+	<ul>
+	<li><a href="cgi-bin/cmg.cgi?r" name="cmd">Зчитати</a></li>
+	<li><a href="cgi-bin/cmg.cgi?s" name="cmd">Встановити</a></li>
+	</ul>
+</li>
+</ul>
+</div>
+
+<div id="result">Результат виконання обраної команди буде відображено у цьому блоці</div>
+
+</body>
+</html>

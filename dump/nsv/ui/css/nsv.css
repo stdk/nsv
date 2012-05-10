@@ -1,0 +1,33 @@
+#info {
+  font-weight: bold;
+	text-align: center;
+	width:100%;
+	margin:5px;
+	position:relative;
+}
+
+#storage {
+	float:left;	
+}
+
+#server {
+	float:right;
+}
+
+#tabs {
+	clear:both;
+	float:left;
+	font-size:90%;
+}
+
+td.status1 {
+  font-size: 1.6em;
+  color: green;
+}
+
+td.status0 {
+  font-size: 1.6em;
+  color: red;
+}
+
+

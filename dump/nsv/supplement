@@ -1,0 +1,116 @@
+#!/bin/python
+# -*- coding: utf8 -*-
+from commands import getoutput
+from time import asctime
+from BaseHTTPServer import HTTPServer,BaseHTTPRequestHandler
+from cgi import FieldStorage
+from httplib import HTTPConnection
+from string import Template
+
+HOST = getoutput("ifconfig").split("\n")[1].split()[1][5:]
+PORT     = 4001
+NSV_PORT = 4000
+FIRMWARE_PATH   = '/mnt/cf/storage/firmware/'
+INDEX_PAGE_PATH = '/mnt/cf/nsv/ui/supplement.html'
+
+OK                = 200
+MOVED_PERMANENTLY = 303
+BAD_REQUEST       = 400
+NOT_FOUND         = 404
+
+class BaseRequestHandler(BaseHTTPRequestHandler):
+ def not_found(self):
+  self.send_response(NOT_FOUND)
+  self.send_header('Content-type','text/plain')
+  self.end_headers()
+  self.wfile.write('Not found')
+ 
+ def bad_request(self):
+  self.send_response(BAD_REQUEST)
+  self.end_headers()
+ 
+ def ok(self,content_type):
+  self.send_response(OK)
+  self.send_header('Content-type',content_type)
+  self.end_headers()
+  
+ def error(self,message):
+  self.send_response(OK)
+  self.send_header('Content-type','text/html')
+  self.end_headers()
+  self.wfile.write(message)
+  
+ def redirect(self,path):
+  self.send_response(MOVED_PERMANENTLY)
+  location = 'http://%s:%s%s' % (HOST,PORT,path)
+  print location
+  self.send_header('Location',location)
+  self.end_headers()
+  
+ def parse_path(self):
+  pure_path,query_string = (self.path+'?').split('?')[:2]
+  return pure_path,query_string 
+  
+ @staticmethod 
+ def parse_query_string(s):
+  return dict( ( (pair+'=').split('=')[:2] for pair in s.split('&') ) )   
+  
+ def query_GET(self):
+  pure_path,query_string = self.parse_path()
+  return self.parse_query_string(query_string)
+
+class RequestHandler(BaseRequestHandler):  
+ def update_firmware_request(self,addr,firmware_filename):
+  connection = HTTPConnection(HOST, NSV_PORT, timeout=10)
+  request_path = '/cmd?name=update-firmware'
+  request_body = 'addr=%s&filename=%s' % (addr,firmware_filename)
+  #print 'request_path',request_path
+  connection.request('POST', request_path, request_body)
+  response = connection.getresponse()
+  if response.status == 200:
+   answer = response.read()
+   code = answer.split()[0]
+   return code
+  else:
+   return -1
+  
+ def do_GET(self):
+  path,query_string = self.parse_path()
+  if path=='/favicon.ico': return self.not_found()
+  query = self.parse_query_string(query_string)
+  addr = query.get('addr','')
+  result = query.get('result','None')
+  self.ok('text/html')
+  parameters = { 'host': HOST, 'addr':addr, 'result' : result }
+  self.wfile.write(Template(open(INDEX_PAGE_PATH).read()).substitute(**parameters))
+  
+ def do_POST(self):
+  form = FieldStorage(fp=self.rfile,headers=self.headers,environ={'REQUEST_METHOD':'POST','CONTENT_TYPE':self.headers['Content-Type'] })
+  
+  try:
+   addr = form['addr'].value
+   firmware = form['firmware']
+   int(addr,16)   
+   assert(firmware.filename)
+  except KeyError: return self.redirect('/?result=-2')
+  except ValueError: return self.redirect('/?result=-3')
+  except AssertionError: return self.redirect('/?result=-4&addr=%s' % (addr))
+   
+  try: 
+   open(FIRMWARE_PATH+firmware.filename,'wb').write(firmware.file.read())  
+  except IOError:
+   return self.redirect('/?result=-5')
+   
+  result = self.update_firmware_request(addr,firmware.filename)
+  self.redirect('/?addr=%s&result=%s' % (addr,result))
+  	
+if __name__ == '__main__':
+ server_class = HTTPServer
+ httpd = server_class((HOST, PORT), RequestHandler)
+ print asctime(), "Server Starts - %s:%s" % (HOST, PORT)
+ try:
+  httpd.serve_forever()
+ except KeyboardInterrupt:
+  pass
+ httpd.server_close()
+ print asctime(), "Server Stops - %s:%s" % (HOST, PORT)

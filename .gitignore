@@ -3,8 +3,8 @@
 *.lo
 *.o
 
-# Compiled Dynamic libraries
-*.so
+# Compiled Dynamic libraries - there are libraries in project dump
+#*.so
 
 # Compiled Static libraries
 *.lai

