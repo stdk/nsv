@@ -748,6 +748,7 @@ char* get_file_contents(const char* name,long int *size)
         *size = ftell(file);
         rewind(file);
         //char* chars = (char*)malloc(*size + 1);
+        //TODO: use smart pointer here
         char* chars = new char[*size + 1];
         chars[*size] = '\0';
         for (int i = 0; i < *size;) {

@@ -36,7 +36,7 @@ void http_main(evhttp_request *request,void *ctx)
 		} else {
 			evbuffer_add_printf(evb,"Error loading index page[%s]",index_filename);
 		}
-		free(index_page);
+                delete[] index_page;
 	} else {
 		evbuffer_add_printf(evb,"%s environment variable not specified",NSV_INDEX_FILENAME_ENV);
 	}
