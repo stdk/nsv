@@ -17,6 +17,6 @@ struct IDeviceContainer
 int load_devices(IDeviceContainer* adder);
 int save_devices(DC& container);
 
-char* get_file_contents(const char* name,int *size);
+char* get_file_contents(const char* name,long int *size);
 
 #endif //STORAGE_H

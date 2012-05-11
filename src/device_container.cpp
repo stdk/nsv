@@ -33,6 +33,7 @@ public:
 DC::DC():event_storage( std::auto_ptr<IEventStorage>(createEventStorage()) )
 {
     can_mode = CAN_NORMAL;
+    busy_task_count = 0;
 
     Adder adder(storage,active);
     load_devices(&adder);
@@ -45,14 +46,34 @@ DC::~DC()
      xlog2("~DC");
 }
 
-uint32_t DC::get_can_mode()
+uint32_t DC::getCanMode()
 {
     return can_mode;
 }
 
-void DC::set_can_mode(uint32_t mode)
+void DC::setCanMode(uint32_t mode)
 {
+    xlog2("forced set_can_mode[%i]",mode);
     can_mode = mode;
+}
+
+void DC::beginBusyTask()
+{
+    busy_task_count += 1;
+    xlog2("beginBusyTask[%i] -> CAN_BUSY",busy_task_count);
+    can_mode = CAN_BUSY;
+}
+
+void DC::endBusyTask()
+{
+    if(busy_task_count) busy_task_count -= 1;
+
+    if(!busy_task_count) {
+        xlog2("endBusyTask[0] -> CAN_NORMAL");
+        can_mode = CAN_NORMAL;
+    } else {
+        xlog2("endBusyTask[%i]",busy_task_count);
+    }
 }
 
 void DC::deactivateByAddr(uint32_t addr)

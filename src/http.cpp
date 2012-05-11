@@ -29,7 +29,7 @@ void http_main(evhttp_request *request,void *ctx)
 	
 	const char* index_filename = getenv(NSV_INDEX_FILENAME_ENV);
 	if(index_filename) {
-                int size = 0;
+                long int size = 0;
                 char * index_page = get_file_contents(index_filename,&size);
 		if(index_page) {
                         evbuffer_add_printf(evb,"%s",index_page);

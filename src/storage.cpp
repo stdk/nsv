@@ -740,14 +740,15 @@ static int get_event_storage_state(storage_state *state,const char* storage,size
         return 0;
 }
 
-char* get_file_contents(const char* name,int *size)
+char* get_file_contents(const char* name,long int *size)
 {
         FILE* file = fopen(name, "rb");
         if (file == NULL) return 0;
         fseek(file, 0, SEEK_END);
         *size = ftell(file);
         rewind(file);
-        char* chars = (char*)malloc(*size + 1);
+        //char* chars = (char*)malloc(*size + 1);
+        char* chars = new char[*size + 1];
         chars[*size] = '\0';
         for (int i = 0; i < *size;) {
                 int read = fread(&chars[i], 1, *size - i, file);

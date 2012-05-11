@@ -48,7 +48,7 @@ static const can_event_data canEvents[] = {
         { CAN_GET_SN, handle_get_sn },                                // 4
         { CAN_GET_VERSION, handle_get_version },                      // 5
         { CAN_GET_TIME, handle_get_time },                            // 12
-        { CAN_GET_EVENT, task_based_handler },                          // 14
+        { CAN_GET_EVENT, task_based_handler },                        // 14
         { CAN_LAST_EVENT_ID, handle_get_last_event_id },              // 15
         { CAN_GET_ACTION_LIST_VERSION, handle_get_stoplist_version }, // 21
 };

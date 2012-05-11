@@ -38,12 +38,13 @@ public:
     virtual ~IEventStorage() {}
 };
 
-#define CAN_NORMAL 1
-#define CAN_BUSY   2
+#define CAN_NORMAL 0
+#define CAN_BUSY   1
 
 class DC
 {
         uint32_t can_mode;
+        uint32_t busy_task_count;
 
         std::auto_ptr< IEventStorage > event_storage;
 
@@ -78,15 +79,24 @@ public:
         //given action only for them, while second way allows us either to skip
         //redundant check or use somewhat outdated information for our objectives
         //(e.g. when time changes we can't be sure our devices will remain active
-        //in program POV)
+        //from program POV)
         void for_each_active(int type,IDeviceProcessor * processor,bool check=false);
         void for_each(int type,IDeviceProcessor * processor);
 
         void deactivateByAddr(uint32_t addr);
         int removeBySN(uint64_t sn);
 
-        uint32_t get_can_mode();
-        void set_can_mode(uint32_t mode);
+        //Functions that manage can_mode on higher level.
+        //Their usage allows more than one task to change system can_mode into CAN_BUSY
+        //and after completing time-consuming operation return it to CAN_NORMAL mode.
+        //It's possible for more than one task to beginBusyTask(). After that,
+        //can_mode will be returned to CAN_NORMAL only after corresponding number
+        //of endBusyTask() has been called to ensure all pending tasks are completed.
+        void beginBusyTask();
+        void endBusyTask();
+
+        uint32_t getCanMode();
+        void setCanMode(uint32_t mode);
 };
 
 #endif //DEVICE_CONTAINER

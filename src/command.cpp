@@ -112,17 +112,17 @@ static int update_firmware(evkeyvalq * get,evkeyvalq * post,DC* container)
     const char* str_addr = evhttp_find_header(post,"addr");
     const char* filename = evhttp_find_header(post,"filename");
 
-    xlog2("filename [%s]",filename);
+    xlog2("cmd[update_firmware]: filename [%s]",filename);
 
     if(str_addr && filename) {
         uint32_t addr = 0;
         if( sscanf(str_addr,"%X",&addr) != 1 ) {
-            xlog2("update_firmware: addr scanning failed");
+            xlog2("cmd[update_firmware]: addr scanning failed");
             return INCORRECT;
         }
 
         const char* base_filename = get_base_filename(filename);
-        xlog2("base_filename[%s][%p]",base_filename,base_filename);
+        xlog2("cmd[update_firmware]: base_filename[%s][%p]",base_filename,base_filename);
         if(!*base_filename) {
             return INCORRECT;
         }
@@ -147,7 +147,7 @@ static int update_firmware(evkeyvalq * get,evkeyvalq * post,DC* container)
 static int add_adbk(evkeyvalq * get,evkeyvalq * post,DC* container)
 {
     const char* str_addr = evhttp_find_header(post,"addr");
-    xlog2("addr[%s]",str_addr);
+    xlog2("cmd[add_adbk]: addr[%s]",str_addr);
 
     if(str_addr) {
         uint32_t addr = 0;
@@ -156,7 +156,7 @@ static int add_adbk(evkeyvalq * get,evkeyvalq * post,DC* container)
             container->answer(addr,addr);
             return SUCCEDED;
         } else {
-            xlog2("Invalid adbk address[%s]",str_addr);
+            xlog2("cmd[add_adbk]: invalid adbk address[%s]",str_addr);
             return INCORRECT;
         }
     }
@@ -171,12 +171,15 @@ static int remove_device(evkeyvalq * get, evkeyvalq * post,DC* container)
     if(str_sn) {
         uint64_t sn = 0;
         if( sscanf(str_sn,"%llX",&sn) != 1 ) {
-            xlog2("remove_device: sn scanning failed");
+            xlog2("cmd[remove_device]: sn scanning failed");
             return INCORRECT;
         }
 
         if( device_data* device = container->deviceBySN(sn) ) {
-            removeTask(device->addr); //any tasks pending for this device should be canceled
+            //currently, there is no way to determine a connection between task and device exactly
+            //since tasks are identified only by their device addr, not by sn
+            //TODO: refactoring of task-device system required
+            removeTask2(device->addr); //any tasks pending for this device should be canceled
         } else {
             return DEVICE_NOT_FOUND;
         }
@@ -199,17 +202,17 @@ static int set_can_mode(evkeyvalq * get, evkeyvalq * post,DC* container)
     if(str_mode) {
         int mode = 0;
         if( sscanf(str_mode,"%i",&mode) != 1) {
-            xlog2("set_can_mode: mode scanning failed");
+            xlog2("cmd[set_can_mode]: mode scanning failed");
             return INCORRECT;
         }
 
         switch(mode) {
         case CAN_NORMAL:
         case CAN_BUSY:
-            container->set_can_mode(mode);
+            container->setCanMode(mode);
             return SUCCEDED;
         default:
-            xlog2("set_can_mode: got wrong mode[%i]",mode);
+            xlog2("cmd[set_can_mode]: got wrong mode[%i]",mode);
             return FAILED;
         }
     } else {

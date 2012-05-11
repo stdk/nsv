@@ -164,7 +164,7 @@ static void adbk_recv_stage(int fd,short event,void *arg)
 
     SPacket answer;
     if( answer.recv(fd,c->data,sizeof(c->data)) < 0 ) {
-        xlog2("adbk_recv_stage: failed");
+        xlog("adbk_recv_stage: failed");
     } else {
         c->len = answer.datalen;
         c->callback(c);
@@ -180,7 +180,7 @@ static void adbk_send_stage(int fd,short event,void *arg)
 
     int ret = SPacket::create(ptCommand,c->data,c->len).send(fd);
     if(ret < 0) {
-        xlog2("adbk_send_stage: failed");
+        xlog("adbk_send_stage: failed");
         delete c;
         return;
     }
@@ -288,7 +288,6 @@ public:
         }
 
         if(device_data *device = cmd->container->deviceByAddr(cmd->ip)) {
-            xlog2("device[%p]",device);
             for(int i=0;i< answer->s.block_count;i++) {
                 FLASHEVENT *f = &answer->event + i;
                 cmd->container->eventStorage()->save_event(device,f);

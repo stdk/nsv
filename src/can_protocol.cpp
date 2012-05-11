@@ -60,7 +60,7 @@ void CANMsg::process(device_data* device) {
 int get_sn(DC& container) {
 	xlog("get_sn");
 
-        uint32_t can_mode = container.get_can_mode();
+        uint32_t can_mode = container.getCanMode();
 
         if(CAN_NORMAL == can_mode) {
             // in normal mode we can freely send anything to CAN
@@ -115,7 +115,7 @@ int handle_set_time(can_message * msg,DC& container)
             xlog2("unknown device[%X] responded to set_time query",addr);
     }
 
-    if( !removeTask(addr) ) {
+    if( !removeTask2(addr) ) {
         xlog2("removing task for addr[%hX] failed",addr);
     }
 
@@ -156,10 +156,10 @@ int set_time(DC& container) {
 /* ------------------------------------------------------------- */
 
 int redirect(can_message * msg, DC& container) {
-	if (task_t* task = findTask(msg->id.p.addr)) {
+        /*if (task_t* task = findTask(msg->id.p.addr)) {
                 xlog("redirecting device[%X] func[%i]",msg->id.p.addr,msg->id.p.func);
 		return task->action(msg, container);
-	} else {
+        } else {*/
             if(Task* task = findTask2(msg->id.p.addr)) {
                 if(-1 == task->callback(msg,container)) {
                     xlog("got -1: removing task");
@@ -171,7 +171,7 @@ int redirect(can_message * msg, DC& container) {
                 xlog2("no task for device[%X] to redirect func[%i]",msg->id.p.addr,msg->id.p.func);
 		return -1;
             }
-	}
+        //}
 }
 
 int handle_get_sn(can_message * msg, DC& container) {
