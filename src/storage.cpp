@@ -188,19 +188,24 @@ public:
     }
 };
 
+const char* DEVICE_INSERT_QUERY = "insert or replace into device values(?,?,?)";
+const char* DEVICE_CREATE_TABLE_QUERY = "create table if not exists device(addr text,sn text,id int)";
+
 class SQLiteSaver : public IDeviceProcessor
 {
     SQLiteDatabase db;
     SQLiteTransaction transaction;
+    bool device_table_ok;
     SQLitePreparedStatement statement;
     bool ok;
 public:
     SQLiteSaver(const char* db_filename):
         db(db_filename),
         transaction(&db),
-        statement(db,"insert or replace into device values(?,?,?)")
+        device_table_ok(db.executeNonQuery(DEVICE_CREATE_TABLE_QUERY)),
+        statement(db,DEVICE_INSERT_QUERY)
     {
-        ok = db.valid() && transaction.valid() && statement.valid();
+        ok = db.valid() && device_table_ok && transaction.valid() && statement.valid();
     }
 
     virtual ~SQLiteSaver() {
@@ -211,10 +216,10 @@ public:
         return ok;
     }
 
-    bool removeExistingDevices() {
+   /* bool removeExistingDevices() {
         ok = db.executeNonQuery("delete from device");
         return ok;
-    }
+    }*/
 
     void process(device_data* device) {
         xlog("SQLiteSaver process [%X %llX]",device->addr,device->sn);
@@ -232,11 +237,14 @@ int save_devices(DC& container)
 {
     xlog2("save_devices[%i]",container.storageCount());
 
-    container.eventStorage()->flush();
+    if( container.eventStorage()->flush() == -1) {
+        xlog2("save_devices eventStorage::flush fail");
+        return -1;
+    }
 
     SQLiteSaver saver(getenv(ENV_DB));
     if(saver.valid()) {
-        saver.removeExistingDevices();
+        //saver.removeExistingDevices();
         container.for_each(TYPE_ANY,&saver);
     }
 
@@ -483,6 +491,7 @@ public:
         int fd_cash = open(cash_storage_filename,O_WRONLY);
         if(fd_cash == -1) {
             xlog2("cash_storage[%s] open: %s",cash_storage_filename,strerror(errno));
+            close(fd);
             return -2;
         }
 
@@ -522,7 +531,7 @@ public:
 
         xlog("diff[%i]",buffer_ptr - buffer);
         if(buffer_ptr == buffer_end) {
-         flush();
+         return flush();
         }
 
         return 0;
