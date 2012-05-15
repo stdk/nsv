@@ -156,32 +156,28 @@ int set_time(DC& container) {
 /* ------------------------------------------------------------- */
 
 int redirect(can_message * msg, DC& container) {
-        /*if (task_t* task = findTask(msg->id.p.addr)) {
-                xlog("redirecting device[%X] func[%i]",msg->id.p.addr,msg->id.p.func);
-		return task->action(msg, container);
-        } else {*/
-            if(Task* task = findTask2(msg->id.p.addr)) {
-                if(-1 == task->callback(msg,container)) {
-                    xlog("got -1: removing task");
-                    removeTask2(msg->id.p.addr);
-                    return -1;
-                }
-                return 0;
-            } else {
-                xlog2("no task for device[%X] to redirect func[%i]",msg->id.p.addr,msg->id.p.func);
-		return -1;
-            }
-        //}
+    if(Task* task = findTask2(msg->id.p.addr)) {
+        if(-1 == task->callback(msg,container)) {
+            xlog("got -1: removing task");
+            removeTask2(msg->id.p.addr);
+            return -1;
+        } else {
+            return 0;
+        }
+    } else {
+        xlog2("no task for device[%X] to redirect func[%i]",msg->id.p.addr,msg->id.p.func);
+        return -1;
+    }
 }
 
 int handle_get_sn(can_message * msg, DC& container) {
         xlog("handle_get_sn");
 
-	uint16_t addr = msg->id.p.addr;
+        uint32_t addr = msg->id.p.addr;
 	uint64_t sn;
 	memcpy(&sn, msg->data, msg->length);
 	
-        xlog("addr[%hX] num[%i] end[%i] sn[%llX]",addr,msg->id.p.num,msg->id.p.end,sn);
+        xlog("addr[%X] num[%i] end[%i] sn[%llX]",addr,msg->id.p.num,msg->id.p.end,sn);
 
 	container.answer(addr,sn);
 
@@ -191,16 +187,14 @@ int handle_get_sn(can_message * msg, DC& container) {
 int handle_get_last_event_id(can_message * msg,DC& container) {
 	xlog("handle_get_last_event_id");
 
-	uint16_t addr = msg->id.p.addr;
+        uint32_t addr = msg->id.p.addr;
 
         if (device_data* device = container.deviceByAddr(addr)) {
 		uint32_t new_last_event_id = *(uint32_t*)msg->data;
-
 		device->new_last_event_id(new_last_event_id);
-
-		xlog("device[%hX] last_event_id[%u]",addr,device->last_event_id);
+                xlog("device[%X] last_event_id[%u]",addr,device->last_event_id);
 	} else {
-		xlog2("Unknown device[%hX] responded with its last event id",addr);
+                xlog2("Unknown device[%X] responded with its last event id",addr);
 	}
 
 	return 0;
@@ -209,14 +203,13 @@ int handle_get_last_event_id(can_message * msg,DC& container) {
 int handle_get_version(can_message * msg, DC& container) {
 	xlog("handle_get_version");
 
-	uint16_t addr = msg->id.p.addr;
+        uint32_t addr = msg->id.p.addr;
 
         if (device_data* device = container.deviceByAddr(addr)) {
 		memset(device->version, 0, sizeof(device->version));
 		memcpy(device->version, msg->data, msg->length);
-
 	} else {
-		xlog2("Unknown device[%hX] responded with its version",addr);
+                xlog2("Unknown device[%X] responded with its version",addr);
 	}
 
 	return 0;
@@ -225,11 +218,11 @@ int handle_get_version(can_message * msg, DC& container) {
 int handle_get_time(can_message * msg, DC& container) {
 	xlog("handle_get_time");
 
-	uint16_t addr = msg->id.p.addr;
+        uint32_t addr = msg->id.p.addr;
         if (can_device_data* device = (can_device_data*)container.deviceByAddr(addr)) {
 		device->set_time(msg->data);
 	} else {
-		xlog2("Unknown device[%hX] responded with its time",addr);
+                xlog2("Unknown device[%X] responded with its time",addr);
 	}
 
         return 0;
