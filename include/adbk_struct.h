@@ -107,4 +107,10 @@ struct __attribute__ ((packed)) SStateBlock		// 32 + 10 + 1 + 4 + 1
   char state;	// текущее состояние см. const stXXXXXX
 };
 
+struct __attribute__ ((packed)) SFileBlock
+{
+    char filename[255];
+    char md5[32];
+};
+
 #endif // ADBK_STRUCT_H

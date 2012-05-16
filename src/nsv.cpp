@@ -67,11 +67,21 @@ static int plan(DC&)
     return 0;
 }
 
+extern int execute_file(const char* path,char* const * args);
+static int backup(DC&)
+{
+    xlog2("backup");
+    const char* path = "/mnt/cf/nsv/backup";
+    char* const args[] = { 0 };
+    return execute_file(path,args);
+}
+
 static timed_event service_events[] = {
     { {   60, 0},{  600, 0}, save_devices },
     { {    0, 0},{    5, 0}, plan }, //regular service function that plans execution of can events
     { { 3600, 0},{ 3600, 0}, check_restart },
-    { {    0, 0},{    3, 0}, adbk_service  }
+    { {    0, 0},{    3, 0}, adbk_service  },
+    { {  600, 0},{  600, 0}, backup }
 };
 
 

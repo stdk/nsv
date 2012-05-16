@@ -1,0 +1,9 @@
+#!/bin/sh
+
+echo "Backup[`date`]" >> /tmp/log
+mount -o remount,rw /dev/sda1 /mnt/cf/storage
+cp /tmp/db /mnt/cf/storage/
+cp /tmp/events.bin /mnt/cf/storage/
+cp /tmp/events_cash.bin /mnt/cf/storage/
+umount /mnt/cf/storage
+mount -o ro /dev/sda1 /mnt/cf/storage

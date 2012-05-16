@@ -22,7 +22,7 @@
 #define ENV_DEVICES_NEW      "DEVICES_NEW"
 #define ENV_DEVICES_SAVE     "DEVICES_SAVE"
 #define ENV_STORAGE          "STORAGE"
-#define EVENTS_NUMBER       500000
+#define EVENTS_NUMBER       300000
 #define EVENT_SIZE          sizeof(EVENT)
 
 #define ENV_DB             "DB"
@@ -216,10 +216,10 @@ public:
         return ok;
     }
 
-   /* bool removeExistingDevices() {
+    bool removeExistingDevices() {
         ok = db.executeNonQuery("delete from device");
         return ok;
-    }*/
+    }
 
     void process(device_data* device) {
         xlog("SQLiteSaver process [%X %llX]",device->addr,device->sn);
@@ -244,7 +244,7 @@ int save_devices(DC& container)
 
     SQLiteSaver saver(getenv(ENV_DB));
     if(saver.valid()) {
-        //saver.removeExistingDevices();
+        saver.removeExistingDevices();
         container.for_each(TYPE_ANY,&saver);
     }
 
@@ -525,14 +525,19 @@ public:
                                                       flashevent->HallDeviceType,
                                                       flashevent->HallDeviceID);
 
+        if(buffer_ptr == buffer_end) {
+            int flush_ret = flush();
+            if(flush_ret) return flush_ret;
+        }
+
         int ret = prepare_event(device,flashevent,buffer_ptr);
         if(ret) return ret;
         ++buffer_ptr;
 
-        xlog("diff[%i]",buffer_ptr - buffer);
+        /*xlog("diff[%i]",buffer_ptr - buffer);
         if(buffer_ptr == buffer_end) {
          return flush();
-        }
+        }*/
 
         return 0;
     }

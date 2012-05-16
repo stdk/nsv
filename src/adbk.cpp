@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <stdio.h>
 #include <errno.h>
 
 #include <net.h>
@@ -199,25 +200,25 @@ static int send_adbk_command(adbk_command* c)
     return 0;
 }
 
+template<int command,void (*callback)(adbk_command* cmd)>
+static void execute(device_data* device,DC* container) {
+    SCommand cmd = { command,0,0,btNone,0 };
+    adbk_command* c = new adbk_command(device->addr,container,&cmd,callback);
+    send_adbk_command(c);
+}
+
+template<void (*callback)(adbk_command* cmd),typename DataType>
+static void execute(device_data* device,DC* container,SCommand *cmd,DataType* data=(char*)0) {
+    adbk_command* c = new adbk_command(device->addr,container,cmd,callback);
+    if(data) c->set_data(data,sizeof(DataType));
+    send_adbk_command(c);
+}
+
 class ADBKService : public IDeviceProcessor
 {
     DC *container;
 public:
     ADBKService(DC* con):container(con) {}
-
-    template<int command,void (*callback)(adbk_command* cmd)>
-    static void execute(device_data* device,DC* container) {
-        SCommand cmd = { command,0,0,btNone,0 };
-        adbk_command* c = new adbk_command(device->addr,container,&cmd,callback);
-        send_adbk_command(c);
-    }
-
-    template<void (*callback)(adbk_command* cmd),typename DataType>
-    static void execute(device_data* device,DC* container,SCommand *cmd,DataType* data=(char*)0) {
-        adbk_command* c = new adbk_command(device->addr,container,cmd,callback);
-        if(data) c->set_data(data,sizeof(DataType));
-        send_adbk_command(c);
-    }
 
     static void handle_sync_time(adbk_command* cmd) {
         xlog("handle_sync_time");
@@ -332,6 +333,74 @@ public:
         execute<cmdGetLastEventNo,handle_get_last_event>(device,container);
     }
 };
+
+void handle_get_update(adbk_command* cmd)
+{
+     xlog2("handle_get_update");
+
+     SAnswer *answer = (SAnswer*)cmd->data;
+
+     if(answer->err_code != answOK) {
+
+         if(device_data* device = cmd->container->deviceByAddr(cmd->ip)) {
+             device->progress = answer->err_code;
+         }
+
+         return xlog2("answer[%i] != answOk",answer->err_code);
+     }
+
+     if(cmd->len < sizeof(*answer)) {
+         return xlog2("answer[%i] < required[%i]",cmd->len,sizeof(*answer));
+     }
+}
+
+int adbk_update_cmd(char adbk_num,const char* filename,DC* container)
+{
+    xlog2("adbk_update_cmd[%i][%s]",adbk_num,filename);
+
+    uint32_t server_ip = 0;
+    if(-1 == get_ip("eth0",&server_ip)) return -1;
+
+    uint32_t adbk_addr = server_ip;
+    ((char*)&adbk_addr)[3] = adbk_num;
+
+    char str_adbk_addr[16] = {0};
+    inet_ntop(AF_INET,&adbk_addr,str_adbk_addr,sizeof(str_adbk_addr));
+    xlog2("str_adbk_addr[%s]",str_adbk_addr);
+
+    if(device_data* device = container->deviceByAddr(adbk_addr)) {
+        char str_server_ip[16] = {0};
+        inet_ntop(AF_INET,&server_ip,str_server_ip,sizeof(str_server_ip));
+
+        SCommand updateCmd = { cmdUpdate,0,0,btFile,1 };
+        SFileBlock block;
+
+        const char* firmware_url_format = getenv("FIRMWARE_URL_FORMAT");
+        snprintf(block.filename,sizeof(block.filename),firmware_url_format,str_server_ip,filename);
+        xlog2("adbk_update_cmd url[%s]",block.filename);
+
+        const char* firmware_dir = getenv("FIRMWARE_DIR");
+        char popen_cmd[200] = {0};
+        snprintf(popen_cmd,sizeof(popen_cmd),"/bin/md5sum %s/%s",firmware_dir,filename);
+
+        FILE* md5_file = popen(popen_cmd,"r");
+        if(!md5_file) {
+            xlog2("adbk_update_cmd popen[%s]",strerror(errno));
+            return -3;
+        }
+        fread(block.md5,32,1,md5_file);
+        fclose(md5_file);
+
+        xlog2("md5[%.*s]",32,block.md5);
+
+        execute<handle_get_update>(device,container,&updateCmd,&block);
+
+        return 0;
+    } else {
+        xlog2("adbk_update_cmd: device not found[%s]",str_adbk_addr);
+        return -2;
+    }
+}
 
 int adbk_service(DC& container)
 {

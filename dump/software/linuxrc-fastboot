@@ -96,7 +96,7 @@ fi
 
 (
   mount -t tmpfs none /dev/shm
-  ifconfig eth0 10.0.2.221 
+  ifconfig eth0 10.0.2.246
   telnetd
   mount -t tmpfs tmpfs /tmp
 
@@ -133,7 +133,7 @@ fi
       #ADDED
       #fsck -a /dev/nbd5
       /bin/mount -o ro /dev/nbd5 /mnt/cf
-      #fsck -a /dev/sda1
+      e2fsck -p /dev/sda1
       #mount /dev/sda1 /mnt/cf/storage
       #/bin/mount /dev/sda1 2&>1 > /1
     fi
@@ -148,6 +148,8 @@ fi
   /mnt/root/bin/dropbear 
   /mnt/cf/nsv/startup &
   /mnt/cf/nsv/supplement &
+#  /mnt/cf/stoppark-start &
+#  /mnt/cf/startup-ksv &
   
 ) </dev/null >/dev/null 2>&1 &
 

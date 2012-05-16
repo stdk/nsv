@@ -10,7 +10,8 @@ from string import Template
 HOST = getoutput("ifconfig").split("\n")[1].split()[1][5:]
 PORT     = 4001
 NSV_PORT = 4000
-FIRMWARE_PATH   = '/mnt/cf/storage/firmware/'
+#FIRMWARE_PATH   = '/mnt/cf/storage/firmware/'
+FIRMWARE_PATH = '/tmp/firmware/'
 INDEX_PAGE_PATH = '/mnt/cf/nsv/ui/supplement.html'
 
 OK                = 200

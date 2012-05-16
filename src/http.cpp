@@ -161,7 +161,8 @@ void can_device_ajax(evbuffer * evb,const device_data * device)
     char addr[16] = {0};
     switch(device->get_type()) {
     case TYPE_CAN:  snprintf(addr,sizeof(addr),"%X",device->addr); break;
-    case TYPE_ADBK: inet_ntop(AF_INET,&device->addr,addr,sizeof(addr)); break;
+    case TYPE_ADBK: snprintf(addr,sizeof(addr),"2%02hhX",((char*)&device->addr)[3]); break;
+    //inet_ntop(AF_INET,&device->addr,addr,sizeof(addr)); break;
     }
 
     char inner_time_buf[30]= {0};

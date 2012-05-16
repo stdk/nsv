@@ -7,15 +7,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include "task.h"
-#include "can_protocol.h"
-
 
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "storage.h"
+#include <task.h>
+#include <can_protocol.h>
+#include <adbk.h>
+#include <storage.h>
+#include <net.h>
 
 #define SUCCEDED		0
 #define UNSPECIFIED		1
@@ -115,12 +116,6 @@ static int update_firmware(evkeyvalq * get,evkeyvalq * post,DC* container)
     xlog2("cmd[update_firmware]: filename [%s]",filename);
 
     if(str_addr && filename) {
-        uint32_t addr = 0;
-        if( sscanf(str_addr,"%X",&addr) != 1 ) {
-            xlog2("cmd[update_firmware]: addr scanning failed");
-            return INCORRECT;
-        }
-
         const char* base_filename = get_base_filename(filename);
         xlog2("cmd[update_firmware]: base_filename[%s][%p]",base_filename,base_filename);
         if(!*base_filename) {
@@ -131,13 +126,31 @@ static int update_firmware(evkeyvalq * get,evkeyvalq * post,DC* container)
         char full_filename[200]={0};
         snprintf(full_filename,sizeof(full_filename)-1,"%s/%s",firmware_dir,base_filename);
 
-        int ret = start_firmware_write(addr,full_filename,container);
-        switch(ret) {
-        case -3: return DEVICE_BUSY;
-        case -2: return IO_ERROR;
-        case -1: return DEVICE_NOT_FOUND;
-        case  0: return SUCCEDED;
-        default: return FAILED;
+        uint32_t addr = 0;
+
+        if( sscanf(str_addr,"%X",&addr) == 1 ) { //correctly parsed 1 item
+
+            char* addr_bytes = (char*)&addr;
+            if(addr_bytes[1] == 2) {
+                int ret = adbk_update_cmd(addr_bytes[0],base_filename,container);
+                switch(ret) {
+                case -1: return FAILED;
+                case  0: return SUCCEDED;
+                default: return FAILED;
+                }
+            } else {
+                int ret = start_firmware_write(addr,full_filename,container);
+                switch(ret) {
+                case -3: return DEVICE_BUSY;
+                case -2: return IO_ERROR;
+                case -1: return DEVICE_NOT_FOUND;
+                case  0: return SUCCEDED;
+                default: return FAILED;
+                }
+            }
+        } else {
+            xlog2("cmd[update_firmware]: sscanf addr scanning failed");
+            return INCORRECT;
         }
     } else {
         return INCORRECT;
