@@ -22,8 +22,10 @@ ln -s /mnt/root/www /
 echo "Installing content symlinks to /www/apache/htdocs..."
 ln -s /var/run /mnt/root/www/apache/logs
 ln -s /mnt/cf/nsv/ui /www/apache/htdocs/
-ln -s /mnt/cf/storage/events.bin /www/apache/htdocs/events.bin
-ln -s /mnt/cf/storage/events_cash.bin /www/apache/htdocs/events_cash.bin
+#ln -s /mnt/cf/storage/events.bin /www/apache/htdocs/events.bin
+#ln -s /mnt/cf/storage/events_cash.bin /www/apache/htdocs/events_cash.bin
+ln -s /tmp/events.bin /www/apache/htdocs/events.bin
+ln -s /tmp/events_cash.bin /www/apache/htdocs/events_cash.bin
 
 echo "Install dropbear..."
 mkdir /etc/dropbear
