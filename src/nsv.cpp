@@ -153,7 +153,9 @@ int main(int argc, char* argv[])
         event_base* ev_base = event_init();
 	
         init_can_handler(&can_event,&container);
-        setup_http_server(ev_base,&container);
+
+        http_config config = { &container };
+        setup_http_server(ev_base,&config);
 	
 	//timed events setup
         event_set_timed_events(service_events,TEV_SIZE(service_events),&container);

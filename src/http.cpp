@@ -15,9 +15,6 @@
 extern void http_cmd(evhttp_request *request,void *ctx);
 
 #define HTTP_PORT 4000
-#define NSV_INDEX_FILENAME_ENV "INDEX"
-
-const char* version_format = "%i.%i.%i [%s %s]";
 
 const char* server_info_format = "%s<div id=\"storage\">Last Event [%i]</div><div id=\"server\">IP [%s][%s]</div>";
 
@@ -27,7 +24,8 @@ void http_main(evhttp_request *request,void *ctx)
 	
 	evbuffer *evb = evbuffer_new();
 	
-	const char* index_filename = getenv(NSV_INDEX_FILENAME_ENV);
+        const char* INDEX_ENV = "INDEX";
+        const char* index_filename = getenv(INDEX_ENV);
 	if(index_filename) {
                 long int size = 0;
                 char * index_page = get_file_contents(index_filename,&size);
@@ -38,11 +36,11 @@ void http_main(evhttp_request *request,void *ctx)
 		}
                 delete[] index_page;
 	} else {
-		evbuffer_add_printf(evb,"%s environment variable not specified",NSV_INDEX_FILENAME_ENV);
+                evbuffer_add_printf(evb,"%s environment variable not specified",INDEX_ENV);
 	}
 	
 	evhttp_add_header(request->output_headers,"Content-Type","text/html; charset=utf-8");
-	evhttp_send_reply(request,HTTP_OK,"Main",evb);
+        evhttp_send_reply(request,HTTP_OK,"index",evb);
 	evbuffer_free(evb);
 }
 
@@ -66,7 +64,7 @@ void can_device_plaintext(evbuffer * evb,const device_data * device)
         evbuffer_add_printf(evb,"\n");
 }
 
-void http_evb_print_server_info(evbuffer * evb,info * inf)
+void http_evb_print_server_info(evbuffer * evb,http_config * config)
 {
 	char server_time[30] = {0};
 	time_t now = time(0);
@@ -77,19 +75,19 @@ void http_evb_print_server_info(evbuffer * evb,info * inf)
 	uname(&uts_name);
 	
         evbuffer_add_printf(evb,server_info_format,server_time,
-                            inf->container->eventStorage()->event_id(),
+                            config->container->eventStorage()->event_id(),
                             uts_name.nodename,
-                            inf->ip);//server info
+                            config->ip);//server info
 }
 
 void http_info(evhttp_request *request,void *ctx)
 {
     xlog("http_info request: %s:%d URI: %s",request->remote_host,request->remote_port,request->uri);
-    info * inf = (info*)ctx;
+    http_config * config = (http_config*)ctx;
 
     evbuffer *evb = evbuffer_new();
 
-    http_evb_print_server_info(evb,inf);
+    http_evb_print_server_info(evb,config);
 
     evhttp_add_header(request->output_headers,"Content-Type","text/html; charset=utf-8");
     evhttp_send_reply(request,HTTP_OK,"Devices",evb);
@@ -117,6 +115,8 @@ private:
 
 void evb_print_version(evbuffer * evb)
 {
+        const char* version_format = "%i.%i.%i [%s %s]";
+
 	evbuffer_add_printf(evb,version_format,nsv_version.major,nsv_version.minor,
                                                 nsv_version.fix,nsv_version.build_date,
                                                 nsv_version.build_time);
@@ -129,7 +129,7 @@ void http_version(evhttp_request *request,void *ctx)
 	evbuffer *evb = evbuffer_new();
 	evb_print_version(evb);	
 	evhttp_add_header(request->output_headers,"Content-Type","text/html; charset=utf-8");
-	evhttp_send_reply(request,HTTP_OK,"Version",evb);
+        evhttp_send_reply(request,HTTP_OK,"version",evb);
 	evbuffer_free(evb);
 }
 
@@ -137,20 +137,20 @@ void http_debug(evhttp_request *request,void *ctx)
 {
         xlog("http_debug request: %s:%d URI: %s",request->remote_host,request->remote_port,request->uri);
 
-        info * inf = (info*)ctx;
+        http_config * config = (http_config*)ctx;
 
         evbuffer *evb = evbuffer_new();
 
         DevicePrinter printer(evb,can_device_plaintext);
 
         evbuffer_add_printf(evb,"Active:\n");
-        inf->container->for_each_active(TYPE_ANY,&printer);
+        config->container->for_each_active(TYPE_ANY,&printer);
 
         evbuffer_add_printf(evb,"All:\n");
-        inf->container->for_each(TYPE_ANY,&printer);
+        config->container->for_each(TYPE_ANY,&printer);
 
         evhttp_add_header(request->output_headers,"Content-Type","text/plain; charset=utf-8");
-        evhttp_send_reply(request,HTTP_OK,"Debug",evb);
+        evhttp_send_reply(request,HTTP_OK,"debug",evb);
         evbuffer_free(evb);
 }
 
@@ -187,13 +187,14 @@ void ajax_devices(evhttp_request *request,void *ctx)
 {
     xlog("ajax_devices request: %s:%d URI: %s",request->remote_host,request->remote_port,request->uri);
 
-    info * inf = (info*)ctx;
+    http_config * config = (http_config*)ctx;
 
     evbuffer *evb = evbuffer_new();
     evbuffer_add_printf(evb,"%s","{ \"aaData\":[");
 
     DevicePrinter printer(evb,can_device_ajax,",");
-    inf->container->for_each(TYPE_ANY,&printer);
+    config->container->for_each(TYPE_ANY,&printer);
+
     evbuffer_add_printf(evb,"%s","]}");
 
     evhttp_add_header(request->output_headers,"Content-Type","text/html; charset=utf-8");
@@ -201,28 +202,42 @@ void ajax_devices(evhttp_request *request,void *ctx)
     evbuffer_free(evb);
 }
 
-int setup_http_server(event_base * ev_base,DC * container)
+void http_events_cash(evhttp_request *request,void *ctx)
 {
-        static info inf = { container };
+    xlog2("events_cash request: %s:%d URI: %s",request->remote_host,request->remote_port,request->uri);
 
+    http_config * config = (http_config*)ctx;
+    config->container->eventStorage()->flush();
+
+    char location[50] = {0};
+    snprintf(location,sizeof(location),"http://%s/events_cash.bin",config->ip);
+
+    evhttp_add_header(request->output_headers,"Location",location);
+    evhttp_send_reply(request,HTTP_MOVETEMP,"events_cash",0);
+}
+
+int setup_http_server(event_base * ev_base,http_config * config)
+{
         uint32_t ip = 0;
         if(-1 != get_ip("eth0",&ip)) {
-                inet_ntop(AF_INET,&ip,inf.ip,sizeof(inf.ip));
-                xlog2("Determined eth0 IP address: %s",inf.ip);
+                inet_ntop(AF_INET,&ip,config->ip,sizeof(config->ip));
+                xlog2("Determined eth0 IP address: %s",config->ip);
 
 		evhttp *ev_http = evhttp_new(ev_base);
 		
-                if(0 != evhttp_bind_socket(ev_http,inf.ip,HTTP_PORT)) {
-			xlog("evhttp_bind_socket: fail");
+                if(0 != evhttp_bind_socket(ev_http,config->ip,HTTP_PORT)) {
+                        xlog2("evhttp_bind_socket: fail");
+                        return -2;
 		}
 		
-		evhttp_set_cb(ev_http,"/",http_main,&inf);
-                evhttp_set_cb(ev_http,"/info",http_info,&inf);
-		evhttp_set_cb(ev_http,"/version",http_version,&inf);
-                evhttp_set_cb(ev_http,"/dev-data",ajax_devices,&inf);
-		evhttp_set_cb(ev_http,"/cmd",http_cmd,&inf);
+                evhttp_set_cb(ev_http,"/",http_main,config);
+                evhttp_set_cb(ev_http,"/info",http_info,config);
+                evhttp_set_cb(ev_http,"/version",http_version,config);
+                evhttp_set_cb(ev_http,"/dev-data",ajax_devices,config);
+                evhttp_set_cb(ev_http,"/cmd",http_cmd,config);
+                evhttp_set_cb(ev_http,"/events_cash.bin",http_events_cash,config);
 
-                evhttp_set_cb(ev_http,"/debug",http_debug,&inf);
+                evhttp_set_cb(ev_http,"/debug",http_debug,config);
 		
 		return 0;
 	} else {

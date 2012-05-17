@@ -18,12 +18,9 @@
 
 #define EVENTS_OPEN_FLAGS (O_RDWR /* | O_SYNC*/)
 
-#define ENV_DEVICES          "DEVICES"
-#define ENV_DEVICES_NEW      "DEVICES_NEW"
-#define ENV_DEVICES_SAVE     "DEVICES_SAVE"
-#define ENV_STORAGE          "STORAGE"
+#define ENV_STORAGE         "STORAGE"
 #define EVENTS_NUMBER       300000
-#define EVENT_SIZE          sizeof(EVENT)
+#define EVENT_SIZE          (sizeof(EVENT))
 
 #define ENV_DB             "DB"
 
@@ -54,18 +51,6 @@ struct storage_state
 };
 
 static int get_event_storage_state(storage_state * state,const char* storage,size_t events_number,size_t event_size);
-
-class FileSaver : public IDeviceProcessor
-{
-	FILE* dev_file;
-public:
-        FileSaver(FILE* _dev_file):dev_file(_dev_file) {}
-
-        void process(device_data* device) {
-                fprintf(dev_file,"%X %llX ",device->addr,device->sn);
-		fprintf(dev_file,"%u\n",device->current_event_id);
-	}
-};
 
 class SQLiteDatabase
 {
@@ -251,42 +236,6 @@ int save_devices(DC& container)
     return 0;
 }
 
-int save_devices_old(DC& container)
-{
-        xlog2("save_devices[%i]",container.storageCount());
-
-        container.eventStorage()->flush();
-	
-        char* new_device_storage = getenv(ENV_DEVICES_NEW);
-        char* save_cmd = getenv(ENV_DEVICES_SAVE);
-
-        FILE* dev_file = fopen(new_device_storage,"w");
-	if(!dev_file) {
-                xlog2("cannot open file[%s] in save_devices",new_device_storage);
-		return -1;
-	}
-
-        FileSaver saver(dev_file);
-        container.for_each(TYPE_ANY,&saver);
-	
-        #ifdef FORCED_SYNC
-            if(-1 == fsync(fileno(dev_file))) {
-                xlog2("fsync: %s",strerror(errno));
-            }
-        #endif
-
-	if(fclose(dev_file)) return -1;
-	
-        if(system(save_cmd) != 0) {
-                xlog2("Error during backup");
-		return -1;
-	} else {
-		xlog("backup ok");
-	}
-
-	return 0;
-}
-
 class SQLiteLoader
 {
     sqlite3 *db;
@@ -356,37 +305,6 @@ int load_devices(IDeviceContainer* adder)
     return 0;
 }
 
-int load_devices_old(IDeviceContainer* adder)
-{
-        xlog("load_devices adder");
-
-        char* device_storage = getenv(ENV_DEVICES);
-        FILE* dev_file = fopen(device_storage,"r");
-	if(!dev_file) {
-                xlog2("cannot open devices file[%s] to read",device_storage);
-		return -1;
-	}
-
-	while(!feof(dev_file)) {
-		uint64_t sn;
-                uint32_t addr;
-		uint32_t event_id;
-
-                fscanf(dev_file,"%X %llX %u\n",&addr,&sn,&event_id);
-
-                int add = sn && addr;
-                if(add) {
-                    adder->add_device(addr,sn,event_id);
-                }
-
-                xlog2("device[%X][%llX][%u] verdict[%i]",addr,sn,event_id,add);
-	}
-
-        fclose(dev_file);
-
-	return 0;
-}
-
 static int prepare_event(device_data * device,FLASHEVENT * flashevent,EVENT* ev)
 {
     xlog("prepare_event");
@@ -425,9 +343,8 @@ public:
     static BufferedEventStorage* create(storage_state current_state,storage_state current_state_cash) {
         xlog2("BufferedEventStorage::create");
 
-        const char* ENV_SIZE = "EVENT_STORAGE_SIZE";
         uint32_t size = 30;
-        const char* str_size = getenv(ENV_SIZE);
+        const char* str_size = getenv("EVENT_STORAGE_SIZE");
         if(str_size) {
             size = atoi(str_size);
         }
@@ -469,7 +386,7 @@ public:
         }
         if(bytes_write != sizeof(*e)) {
             xlog2("not enough bytes written[%i]",bytes_write);
-                return -1;
+            return -1;
         }
         //on success we can increase current state parameters
         state.id += 1;
@@ -533,11 +450,6 @@ public:
         int ret = prepare_event(device,flashevent,buffer_ptr);
         if(ret) return ret;
         ++buffer_ptr;
-
-        /*xlog("diff[%i]",buffer_ptr - buffer);
-        if(buffer_ptr == buffer_end) {
-         return flush();
-        }*/
 
         return 0;
     }

@@ -10,12 +10,12 @@
 
 #include "device_container.h"
 
-struct info
+struct http_config
 {
 	DC * container;
         char ip[20];
 };
 
-int setup_http_server(event_base * ev_base,DC * container);
+int setup_http_server(event_base * ev_base,http_config * config);
 
 #endif //HTTP_H

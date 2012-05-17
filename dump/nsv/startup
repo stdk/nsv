@@ -4,10 +4,6 @@ do
  sleep 3 
  echo "/mnt/cf/storage : mount"
  /bin/mount -o ro /dev/sda1 /mnt/cf/storage 
-# cp /mnt/cf/storage/db /tmp/
-# cp /mnt/cf/storage/events.bin /tmp/
-# cp /mnt/cf/storage/events_cash.bin /tmp/
-# mkdir /tmp/firmware
 done
 
 cp /mnt/cf/storage/db /tmp/
@@ -15,20 +11,12 @@ cp /mnt/cf/storage/events.bin /tmp/
 cp /mnt/cf/storage/events_cash.bin /tmp/
 mkdir /tmp/firmware
 
-#umount /dev/sda1
-
 export START_STOP_DAEMON=/mnt/root/sbin/start-stop-daemon
 export CANCTL=/sbin/canctl
 export INDEX=/mnt/cf/nsv/ui/index.html
-#export DEVICES=/mnt/cf/storage/devices
-#export DEVICES_NEW=/mnt/cf/storage/devices.new
-export DEVICES_SAVE="mv $DEVICES_NEW $DEVICES"
-#export STORAGE=/mnt/cf/storage/events.bin 
 export STORAGE=/tmp/events.bin
-#export STORAGE_CASH=/mnt/cf/storage/events_cash.bin
 export STORAGE_CASH=/tmp/events_cash.bin
 export RESTART=/mnt/cf/nsv/restart
-#export FIRMWARE_DIR=/mnt/cf/storage/firmware
 export FIRMWARE_DIR=/tmp/firmware
 export FIRMWARE_URL_FORMAT=http://%s/firmware/%s
 export EVENT_STORAGE_SIZE=300

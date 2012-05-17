@@ -262,8 +262,8 @@ void http_cmd(evhttp_request *request,void *ctx)
 {
 	xlog2("http_cmd request: %s:%d URI: %s",request->remote_host,request->remote_port,request->uri);	
 	
-        info * inf = (info*)ctx;
-        DC* container = inf->container;
+        http_config *cfg = (http_config*)ctx;
+        DC* container = cfg->container;
 
 	evbuffer *evb = evbuffer_new();
 	
