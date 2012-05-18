@@ -11,7 +11,7 @@ LFLAGS          := -levent -lsqlite3
 MODULES         := platform.sys platform log can timed_event task net \
                    can_device device_container can_protocol \
                    storage get_event_impl update_firmware_impl \
-		   stoplist_impl command http can_handler adbk nsv
+		   stoplist_impl command http can_handler adbk
 OBJS            := $(foreach module,$(MODULES),$(OBJ_DIR)/$(module).o)
 
 TESTS           := device_container
@@ -26,7 +26,7 @@ tests: $(foreach test,$(TESTS),$(test).test)
 %.test: $(TEST_DIR)/%.cpp $(OBJS)
 	$(CC) $(CFLAGS) $(LFLAGS) $^ -o $@
 
-nsv: $(OBJS)
+nsv: $(OBJS) $(OBJ_DIR)/nsv.o
 	$(CC) $(LFLAGS) $^ -o $@
 	$(STRIP) $@
 
