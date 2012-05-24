@@ -53,7 +53,7 @@ static int check_restart(DC& container)
 static timed_event can_events[] = {
     { { 1,0},{ 0 ,0}, get_sn },
     { { 2,0},{ 3 ,3}, get_time },
-//  { { 2,0},{ 3 ,2}, get_stoplist_version },
+    { { 2,0},{ 3 ,2}, get_stoplist_version },
     { { 2,0},{ 3 ,1}, get_version },
     { { 2,0},{23,12}, set_time },
     { { 3,0},{ 0 ,0}, get_last_event_id },
@@ -71,7 +71,7 @@ extern int execute_file(const char* path,char* const * args);
 static int backup(DC&)
 {
     xlog2("backup");
-    const char* path = "/mnt/cf/nsv/backup";
+    const char* path = getenv("BACKUP_SCRIPT");
     char* const args[] = { 0 };
     return execute_file(path,args);
 }

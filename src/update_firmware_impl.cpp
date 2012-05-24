@@ -3,8 +3,6 @@
 #include "can_device.h"
 #include "device_container.h"
 
-#include "timeout.h"
-
 class UpdateFirmwareTask : public Task
 {
     DC* container;

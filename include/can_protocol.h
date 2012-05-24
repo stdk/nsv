@@ -69,6 +69,7 @@ public:
 // common manipulation over CAN
 
 int start_firmware_write(uint32_t addr,const char* filename,DC *container);
+int start_stoplist_write(uint32_t addr,const char* filename,DC *container);
 
 /* ------------------------------------------------- */
 // CAN command initiators

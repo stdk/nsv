@@ -59,6 +59,7 @@ void can_device_plaintext(evbuffer * evb,const device_data * device)
         strftime(time_buf,sizeof(time_buf)-1,"%F %T",localtime(&device->last_answer_time));
         evbuffer_add_printf(evb,"%s (%u) ",time_buf,device->answered);
         evbuffer_add_printf(evb,"%8u/%8u ",device->current_event_id,device->last_event_id);
+        evbuffer_add_printf(evb,"%08X ",device->stoplist);
         evbuffer_add_printf(evb,"%8u ",device->errors);
         evbuffer_add_printf(evb,"%8i ",device->progress);
         evbuffer_add_printf(evb,"\n");
@@ -156,7 +157,7 @@ void http_debug(evhttp_request *request,void *ctx)
 
 void can_device_ajax(evbuffer * evb,const device_data * device)
 {
-    const char *format = "[\"%i\",\"%s\",\"%016llX\",\"%s\",\"%s\",\"%s (%u)\",\"%u/%u\",\"%u\",\"%i\"]";
+    const char *format = "[\"%i\",\"%s\",\"%016llX\",\"%s\",\"%s\",\"%s (%u)\",\"%u/%u\",\"%05X\",\"%u\",\"%i\"]";
 
     char addr[16] = {0};
     switch(device->get_type()) {
@@ -179,6 +180,7 @@ void can_device_ajax(evbuffer * evb,const device_data * device)
                         last_answer_time_buf,
                         device->answered,
                         device->current_event_id,device->last_event_id,
+                        device->stoplist,
                         device->errors,
                         device->progress);
 }

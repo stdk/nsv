@@ -88,7 +88,7 @@ function initPage()
 	})
 
 	var iframe = '<iframe style="width:100%;height:5em" scrolling="no" frameborder="0" src="http://'+location.hostname+':4001">error</iframe>'
-	$("#tab-firmware-update").append(iframe)
+	$("#tab-upload").append(iframe)
 }
 
 function initData(update_interval)

@@ -108,16 +108,51 @@ static inline const char* get_base_filename(const char* filename)
     }
 }
 
-static int update_firmware(evkeyvalq * get,evkeyvalq * post,DC* container)
+static int firmware_update(uint32_t addr,const char* base_filename,const char* full_filename,DC* container)
+{
+    char* addr_bytes = (char*)&addr;
+    if(addr_bytes[1] == 2) {
+        int ret = adbk_update_cmd(addr_bytes[0],base_filename,container);
+        switch(ret) {
+        case -1: return FAILED;
+        case  0: return SUCCEDED;
+        default: return FAILED;
+        }
+    } else {
+        int ret = start_firmware_write(addr,full_filename,container);
+        switch(ret) {
+        case -3: return DEVICE_BUSY;
+        case -2: return IO_ERROR;
+        case -1: return DEVICE_NOT_FOUND;
+        case  0: return SUCCEDED;
+        default: return FAILED;
+        }
+    }
+}
+
+static int stoplist_update(uint32_t addr,const char* base_filename,const char* full_filename,DC* container)
+{
+    int ret = start_stoplist_write(addr,full_filename,container);
+    switch(ret) {
+    case -3: return DEVICE_BUSY;
+    case -2: return IO_ERROR;
+    case -1: return DEVICE_NOT_FOUND;
+    case  0: return SUCCEDED;
+    default: return FAILED;
+    }
+}
+
+static int upload(evkeyvalq * get,evkeyvalq * post,DC* container)
 {
     const char* str_addr = evhttp_find_header(post,"addr");
     const char* filename = evhttp_find_header(post,"filename");
+    const char* type = evhttp_find_header(post,"type");
 
-    xlog2("cmd[update_firmware]: filename [%s]",filename);
+    xlog2("cmd[upload]: filename [%s]",filename);
 
-    if(str_addr && filename) {
+    if(str_addr && filename && type) {
         const char* base_filename = get_base_filename(filename);
-        xlog2("cmd[update_firmware]: base_filename[%s][%p]",base_filename,base_filename);
+        xlog2("cmd[upload]: base_filename[%s][%p]",base_filename,base_filename);
         if(!*base_filename) {
             return INCORRECT;
         }
@@ -127,29 +162,21 @@ static int update_firmware(evkeyvalq * get,evkeyvalq * post,DC* container)
         snprintf(full_filename,sizeof(full_filename)-1,"%s/%s",firmware_dir,base_filename);
 
         uint32_t addr = 0;
-
         if( sscanf(str_addr,"%X",&addr) == 1 ) { //correctly parsed 1 item
 
-            char* addr_bytes = (char*)&addr;
-            if(addr_bytes[1] == 2) {
-                int ret = adbk_update_cmd(addr_bytes[0],base_filename,container);
-                switch(ret) {
-                case -1: return FAILED;
-                case  0: return SUCCEDED;
-                default: return FAILED;
-                }
-            } else {
-                int ret = start_firmware_write(addr,full_filename,container);
-                switch(ret) {
-                case -3: return DEVICE_BUSY;
-                case -2: return IO_ERROR;
-                case -1: return DEVICE_NOT_FOUND;
-                case  0: return SUCCEDED;
-                default: return FAILED;
-                }
+            const char *firmware = "firmware";
+            if(strncmp(type,firmware,sizeof(firmware)) == 0) {
+                return firmware_update(addr,base_filename,full_filename,container);
             }
+
+            const char *stoplist = "stoplist";
+            if(strncmp(type,stoplist,sizeof(stoplist)) == 0) {
+                return stoplist_update(addr,base_filename,full_filename,container);
+            }
+
+            return INCORRECT;
         } else {
-            xlog2("cmd[update_firmware]: sscanf addr scanning failed");
+            xlog2("cmd[upload]: sscanf addr scanning failed");
             return INCORRECT;
         }
     } else {
@@ -241,8 +268,8 @@ static const struct command
 	cmd_cb action;
 } Commands[] = {
                 { "set-time"         ,set_time },           // (string time)
-                { "update-firmware"  ,update_firmware },    // (hex addr,string filename)
-                { "remove-device"    ,remove_device },       // (hex sn)
+                { "upload"           ,upload },             // (hex addr,string filename)
+                { "remove-device"    ,remove_device },      // (hex sn)
                 { "add-adbk"         ,add_adbk },
                 { "set-can-mode"     ,set_can_mode },
 };

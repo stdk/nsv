@@ -6,11 +6,11 @@ from BaseHTTPServer import HTTPServer,BaseHTTPRequestHandler
 from cgi import FieldStorage
 from httplib import HTTPConnection
 from string import Template
+from struct import pack
 
 HOST = getoutput("ifconfig").split("\n")[1].split()[1][5:]
 PORT     = 4001
 NSV_PORT = 4000
-#FIRMWARE_PATH   = '/mnt/cf/storage/firmware/'
 FIRMWARE_PATH = '/tmp/firmware/'
 INDEX_PAGE_PATH = '/mnt/cf/nsv/ui/supplement.html'
 
@@ -19,11 +19,35 @@ MOVED_PERMANENTLY = 303
 BAD_REQUEST       = 400
 NOT_FOUND         = 404
 
+def getCRC(cards):
+ sum = 0
+ for aspp,status in [card.split(' ') for card in cards]:
+  sum += ord(status[0]) - 0x30
+  for pair in [aspp[2*i:2*i+2] for i in range(8)]:#important: if it looks like changes required - it is probably a node server bug )
+   sum += ((ord(pair[0]) - 0x30) << 4) + ord(pair[1]) - 0x30  
+ return hex(sum & 0xFFFF).split('x')[-1]
+
+def stringToBCD(s):
+ b = bytearray()
+ [b.append( int(s[2*i:2*i+2],16) ) for i in xrange(len(s)/2)]
+ return str(b),sum(b) & 0xFFFF
+
+def cardsToBCD(cards):
+ return stringToBCD('0000' + '0000'.join([card.strip().replace(' ','0') for card in cards]))
+
+def prepare_stoplist(text_data):
+ rows = text_data.split('\n')
+ version = int(rows[0])
+ del rows[0:6]
+ rows.sort()
+ cards_bcd,crc = cardsToBCD(rows)
+ header = pack('HH',version,crc) #add 4-byte header to our file that should be sent with CAN_SET_ACTION_LIST_VERSION command
+ return header + cards_bcd
+
 class BaseRequestHandler(BaseHTTPRequestHandler):
  def not_found(self):
   self.send_response(NOT_FOUND)
-  self.send_header('Content-type','text/plain')
-  self.end_headers()
+  self.send_header('Content-type','text/plain').end_headers()
   self.wfile.write('Not found')
  
  def bad_request(self):
@@ -61,12 +85,14 @@ class BaseRequestHandler(BaseHTTPRequestHandler):
   return self.parse_query_string(query_string)
 
 class RequestHandler(BaseRequestHandler):  
- def update_firmware_request(self,addr,firmware_filename):
+ def update_request(self,addr,filename,file_type):
   connection = HTTPConnection(HOST, NSV_PORT, timeout=10)
-  request_path = '/cmd?name=update-firmware'
-  request_body = 'addr=%s&filename=%s' % (addr,firmware_filename)
-  #print 'request_path',request_path
-  connection.request('POST', request_path, request_body)
+  request_path = '/cmd?name=upload'
+  request_body = 'addr=%s&filename=%s&type=%s' % (addr,filename,file_type)
+  
+  try:
+   connection.request('POST', request_path, request_body)
+  except: return -1
   response = connection.getresponse()
   if response.status == 200:
    answer = response.read()
@@ -88,23 +114,37 @@ class RequestHandler(BaseRequestHandler):
  def do_POST(self):
   form = FieldStorage(fp=self.rfile,headers=self.headers,environ={'REQUEST_METHOD':'POST','CONTENT_TYPE':self.headers['Content-Type'] })
   
+  stoplist_ext = ['txt']
+  firmware_ext = ['dat','bin','enc','chx']
+  valid_ext = stoplist_ext + firmware_ext
+
   try:
    addr = form['addr'].value
    firmware = form['firmware']
    int(addr,16)   
    assert(firmware.filename)
+   extension = firmware.filename.split('.')[-1].lower()
+   assert(extension in valid_ext)
   except KeyError: return self.redirect('/?result=-2')
   except ValueError: return self.redirect('/?result=-3')
   except AssertionError: return self.redirect('/?result=-4&addr=%s' % (addr))
-   
-  try: 
-   open(FIRMWARE_PATH+firmware.filename,'wb').write(firmware.file.read())  
+  except IndexError: return self.redirect('/?result=-6&addr=%s' % (addr))
+  
+  data_transform = prepare_stoplist if extension in stoplist_ext else lambda x:x
+  try:
+   open(FIRMWARE_PATH+firmware.filename,'wb').write(data_transform(firmware.file.read()))  
   except IOError:
    return self.redirect('/?result=-5')
-   
-  result = self.update_firmware_request(addr,firmware.filename)
+  
+  result = -6
+
+  file_type = 'unknown'  
+  if extension in firmware_ext: file_type = 'firmware'
+  if extension in stoplist_ext: file_type = 'stoplist'
+  
+  result = self.update_request(addr,firmware.filename,file_type)
   self.redirect('/?addr=%s&result=%s' % (addr,result))
-  	
+ 
 if __name__ == '__main__':
  server_class = HTTPServer
  httpd = server_class((HOST, PORT), RequestHandler)

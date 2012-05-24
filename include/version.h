@@ -8,6 +8,6 @@ const struct nsv_version_info
 	int fix;
 	char build_time[20];
 	char build_date[20];
-} nsv_version = { 1,4,1,__TIME__,__DATE__};
+} nsv_version = { 1,5,0,__TIME__,__DATE__};
 
 #endif //NSV_H
