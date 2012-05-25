@@ -141,20 +141,18 @@ class RequestHandler(BaseRequestHandler):
   except AssertionError: return self.redirect('/?result=-4&addr=%s' % (addr))
   except IndexError: return self.redirect('/?result=-6&addr=%s' % (addr))
 
-  data_transform = prepare_stoplist if extension in stoplist_ext else lambda x:x
   try:
    if extension in stoplist_ext: 
-    open(FIRMWARE_PATH+firmware.filename,'wb').write(prepare_stoplist(firmware.file.read()))  
+    stoplist = prepare_stoplist(firmware.file.read())
+    open(FIRMWARE_PATH+firmware.filename,'wb').write(stoplist)  
    else:
     from os import rename,chmod
     target_filename = FIRMWARE_PATH + firmware.filename
     rename(firmware.file.name,target_filename)
     chmod(target_filename,0744)
-  except IOError:
-   return self.redirect('/?result=-5')
+  except IOError: return self.redirect('/?result=-5')
+  except ValueError: return self.redirect('/?result=-8')
   
-  result = -6
-
   file_type = 'unknown'  
   if extension in firmware_ext: file_type = 'firmware'
   if extension in stoplist_ext: file_type = 'stoplist'
