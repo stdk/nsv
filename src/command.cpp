@@ -26,6 +26,7 @@
 #define DEVICE_NOT_FOUND        5
 #define DEVICE_BUSY             6
 #define IO_ERROR                7
+#define CANCELED                8
 
 const char* const Errors[] = {
         "Command succeded", 			// 0
@@ -121,6 +122,7 @@ static int firmware_update(uint32_t addr,const char* base_filename,const char* f
     } else {
         int ret = start_firmware_write(addr,full_filename,container);
         switch(ret) {
+        case -4: return CANCELED;
         case -3: return DEVICE_BUSY;
         case -2: return IO_ERROR;
         case -1: return DEVICE_NOT_FOUND;
@@ -134,6 +136,7 @@ static int stoplist_update(uint32_t addr,const char* base_filename,const char* f
 {
     int ret = start_stoplist_write(addr,full_filename,container);
     switch(ret) {
+    case -4: return CANCELED;
     case -3: return DEVICE_BUSY;
     case -2: return IO_ERROR;
     case -1: return DEVICE_NOT_FOUND;
