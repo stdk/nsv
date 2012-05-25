@@ -7,6 +7,7 @@ from cgi import FieldStorage
 from httplib import HTTPConnection
 from string import Template
 from struct import pack
+from os import system
 
 HOST = getoutput("ifconfig").split("\n")[1].split()[1][5:]
 PORT     = 4001
@@ -84,6 +85,11 @@ class BaseRequestHandler(BaseHTTPRequestHandler):
   pure_path,query_string = self.parse_path()
   return self.parse_query_string(query_string)
 
+class CustomFieldStorage(FieldStorage):
+ def make_file(self,binary=None):
+  import tempfile
+  return tempfile.NamedTemporaryFile("w+b",dir=FIRMWARE_PATH,delete=False)
+
 class RequestHandler(BaseRequestHandler):  
  def update_request(self,addr,filename,file_type):
   connection = HTTPConnection(HOST, NSV_PORT, timeout=10)
@@ -112,16 +118,21 @@ class RequestHandler(BaseRequestHandler):
   self.wfile.write(Template(open(INDEX_PAGE_PATH).read()).substitute(**parameters))
   
  def do_POST(self):
-  form = FieldStorage(fp=self.rfile,headers=self.headers,environ={'REQUEST_METHOD':'POST','CONTENT_TYPE':self.headers['Content-Type'] })
+  system('rm -f /tmp/firmware/*')
+  try:
+   #form = FieldStorage(fp=self.rfile,headers=self.headers,environ={'REQUEST_METHOD':'POST','CONTENT_TYPE':self.headers['Content-Type'] })
+   form = CustomFieldStorage(fp=self.rfile,headers=self.headers,environ={'REQUEST_METHOD':'POST','CONTENT_TYPE':self.headers['Content-Type'] })
+  except IOError:
+   return self.redirect('/?result=-7')
   
   stoplist_ext = ['txt']
-  firmware_ext = ['dat','bin','enc','chx']
+  firmware_ext = ['dat','bin','enc','chx','exe','ini']
   valid_ext = stoplist_ext + firmware_ext
 
   try:
    addr = form['addr'].value
    firmware = form['firmware']
-   int(addr,16)   
+   int(addr,16)
    assert(firmware.filename)
    extension = firmware.filename.split('.')[-1].lower()
    assert(extension in valid_ext)
@@ -129,10 +140,16 @@ class RequestHandler(BaseRequestHandler):
   except ValueError: return self.redirect('/?result=-3')
   except AssertionError: return self.redirect('/?result=-4&addr=%s' % (addr))
   except IndexError: return self.redirect('/?result=-6&addr=%s' % (addr))
-  
+
   data_transform = prepare_stoplist if extension in stoplist_ext else lambda x:x
   try:
-   open(FIRMWARE_PATH+firmware.filename,'wb').write(data_transform(firmware.file.read()))  
+   if extension in stoplist_ext: 
+    open(FIRMWARE_PATH+firmware.filename,'wb').write(prepare_stoplist(firmware.file.read()))  
+   else:
+    from os import rename,chmod
+    target_filename = FIRMWARE_PATH + firmware.filename
+    rename(firmware.file.name,target_filename)
+    chmod(target_filename,0744)
   except IOError:
    return self.redirect('/?result=-5')
   
