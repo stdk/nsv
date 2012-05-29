@@ -39,6 +39,8 @@ echo "Remounting /mnt/root in ro mode..."
 mount -o remount,ro /mnt/root
 
 echo "Preparing /mnt/cf/storage ..."
+echo "mkfs.ext3"
+mkfs.ext3 /dev/sda1
 mount -o remount,rw /mnt/cf
 mkdir /mnt/cf/storage/
 mount -o remount,ro /mnt/cf

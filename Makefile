@@ -5,7 +5,7 @@ TEST_DIR        := test
 INCLUDE_DIR     := include
 OBJ_DIR         := obj
 
-CFLAGS          := -O2 -Wall -I $(INCLUDE_DIR) -fno-exceptions -finline-functions
+CFLAGS          := -O3 -Wall -I $(INCLUDE_DIR) -fno-exceptions -finline-functions
 LFLAGS          := -levent -lsqlite3
 
 MODULES         := platform.sys platform log can timed_event task net \
