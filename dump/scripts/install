@@ -18,14 +18,14 @@ mount -o remount,rw /mnt/root
 
 echo "Installing apache..."
 cp -R /mnt/cf/software/www /mnt/root/
-ln -s /mnt/root/www /
+ln -sf /mnt/root/www /
 echo "Installing content symlinks to /www/apache/htdocs..."
-ln -s /var/run /mnt/root/www/apache/logs
-ln -s /mnt/cf/nsv/ui /www/apache/htdocs/
+ln -sf /var/run /mnt/root/www/apache/logs
+ln -sf /mnt/cf/nsv/ui /www/apache/htdocs/
 #ln -s /mnt/cf/storage/events.bin /www/apache/htdocs/events.bin
 #ln -s /mnt/cf/storage/events_cash.bin /www/apache/htdocs/events_cash.bin
-ln -s /tmp/events.bin /www/apache/htdocs/events.bin
-ln -s /tmp/events_cash.bin /www/apache/htdocs/events_cash.bin
+ln -sf /tmp/events.bin /www/apache/htdocs/events.bin
+ln -sf /tmp/events_cash.bin /www/apache/htdocs/events_cash.bin
 
 echo "Install dropbear..."
 mkdir /etc/dropbear

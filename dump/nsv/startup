@@ -22,6 +22,7 @@ export FIRMWARE_URL_FORMAT=http://%s/firmware/%s
 export EVENT_STORAGE_SIZE=300
 #export DB=/mnt/cf/storage/db
 export DB=/tmp/db
+export BACKUP_SCRIPT=/mnt/cf/nsv/backup
 
 cd /mnt/cf/nsv
 #./nsv 2>> /mnt/cf/storage/log &
