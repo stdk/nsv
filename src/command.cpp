@@ -263,6 +263,16 @@ static int set_can_mode(evkeyvalq * get, evkeyvalq * post,DC* container)
     }
 }
 
+static int flush(evkeyvalq * get, evkeyvalq * post,DC* container)
+{
+    int ret = save_devices(*container);
+    if(-1 == ret) {
+        return IO_ERROR;
+    } else {
+        return SUCCEDED;
+    }
+}
+
 typedef int (*cmd_cb)(evkeyvalq * get,evkeyvalq * post,DC* container);
 
 static const struct command
@@ -275,6 +285,7 @@ static const struct command
                 { "remove-device"    ,remove_device },      // (hex sn)
                 { "add-adbk"         ,add_adbk },
                 { "set-can-mode"     ,set_can_mode },
+                { "flush"            ,flush },
 };
 const int CommandsSize = sizeof(Commands)/sizeof(command);
 
@@ -305,7 +316,9 @@ void http_cmd(evhttp_request *request,void *ctx)
 	} else {
 		if(cmd_cb action = find_command(cmd_name)) {
 			evkeyvalq post;
+                        bool has_post_data = false;
 			if(size_t size = EVBUFFER_LENGTH(request->input_buffer)) {
+                                has_post_data = true;
 
                                 char * post_buf = (char*)malloc(size+2);//with first ? and last \0
 				post_buf[0]='?';//must be present to make evhttp_parse_query happy
@@ -317,9 +330,12 @@ void http_cmd(evhttp_request *request,void *ctx)
 			}
 
                         int result = action(&get,&post,container);
+                        xlog2("after action");
                         evb_print_err(evb,result);
+                        xlog2("after print_err");
 
-                        evhttp_clear_headers(&post);
+                        if(has_post_data) evhttp_clear_headers(&post);
+                        xlog2("after clear_headers");
 		} else {
 			evb_print_err(evb,UNKNOWN);
 		}		
