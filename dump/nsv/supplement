@@ -34,7 +34,7 @@ def stringToBCD(s):
  return str(b),sum(b) & 0xFFFF
 
 def cardsToBCD(cards):
- return stringToBCD('0000' + '0000'.join([card.strip().replace(' ','0') for card in cards]))
+ return stringToBCD('0000' + '0000'.join([card.strip().replace(' ','0') for card in cards if len(card) >= 18]))
 
 def prepare_stoplist(text_data):
  rows = text_data.split('\n')
