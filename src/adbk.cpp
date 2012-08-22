@@ -14,6 +14,8 @@
 
 #include <event.h>
 
+#define EVENTS_TO_READ_COUNT 30
+
 struct __attribute__ ((packed)) SPacket
 {
     uint32_t len;
@@ -259,8 +261,10 @@ public:
         if(device_data* device = cmd->container->deviceByAddr(cmd->ip)) {
            snprintf(device->version,sizeof(device->version),"%s%s",answer->state.sw_ver,
                                                                    answer->state.card.hw_ver+3);
+           uint64_t sn = 0;
+           memcpy(&sn,answer->state.card.sn,sizeof(sn));
 
-           cmd->container->answer(device->addr,*(uint64_t*)answer->state.card.sn);
+           cmd->container->answer(device->addr,sn);
         } else {
             xlog2("handle_get_state: there is no device[%X]",cmd->ip);
         }
@@ -316,7 +320,13 @@ public:
          if(device_data* device = cmd->container->deviceByAddr(cmd->ip)) {
             device->last_event_id = answer->event.EventNumber;
 
-            SCommand getEventsCommand = {cmdGetEvents,device->current_event_id+1,30,btNone,0};
+            SCommand getEventsCommand = {
+                cmdGetEvents,
+                device->current_event_id + 1,
+                EVENTS_TO_READ_COUNT,
+                btNone,
+                0
+            };
             execute<handle_get_events>(device,cmd->container,&getEventsCommand,(char*)0);
          } else {
              xlog2("handle_get_last_event: there is no device[%X]",cmd->ip);
