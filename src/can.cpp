@@ -99,7 +99,7 @@ int can_write(can_message const * msg)
 				memcpy(pack.data,msg->data + id.p.num*CAN_MSG_LENGTH,pack.length);
 			}
 			
-			xlog("CAN write: sending: num[%i] end[%i] len[%i]",id.p.num,
+                        xlog2("CAN write: sending: num[%i] end[%i] len[%i]",id.p.num,
 															  id.p.end,
 															  pack.length);
 			//sendind current command
@@ -108,7 +108,7 @@ int can_write(can_message const * msg)
 				xlog("CAN write: sending: fail");
 				break;
 			}
-			xlog("CAN write: sending: ok");
+                        xlog2("CAN write: sending: ok");
 			
 			/*unsigned long res = WaitSingleAnswer(addr,func);
 			smartprint("SendCanData[packet %i][end %i][len %i][answer: %i]",
@@ -135,7 +135,7 @@ int can_read(can_message * msg)
 	memcpy(msg->data,pack.data,pack.length);
 	msg->length = pack.length;
 	
-	msg->id.idping  = pack.id;	
+        msg->id.id  = pack.id;
 	
 
 	xlog("CAN read:[addr %X][func %i][len %i][num %i][end %i]",msg->id.p.addr,
