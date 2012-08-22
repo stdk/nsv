@@ -1,3 +1,5 @@
+//TODO: UPDATE TO ACTUAL STATE
+
 #if !defined(struc_h)
 #define struc_h
 
