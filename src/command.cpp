@@ -112,23 +112,20 @@ static inline const char* get_base_filename(const char* filename)
 static int firmware_update(uint32_t addr,const char* base_filename,const char* full_filename,DC* container)
 {
     char* addr_bytes = (char*)&addr;
+    int ret = 0;
     if(addr_bytes[1] == 2) {
-        int ret = adbk_update_cmd(addr_bytes[0],base_filename,container);
-        switch(ret) {
-        case -1: return FAILED;
-        case  0: return SUCCEDED;
-        default: return FAILED;
-        }
+        ret = adbk_update_cmd(addr_bytes[0],base_filename,container);
     } else {
-        int ret = start_firmware_write(addr,full_filename,container);
-        switch(ret) {
-        case -4: return CANCELED;
-        case -3: return DEVICE_BUSY;
-        case -2: return IO_ERROR;
-        case -1: return DEVICE_NOT_FOUND;
-        case  0: return SUCCEDED;
-        default: return FAILED;
-        }
+        ret = start_firmware_write(addr,full_filename,container);
+    }
+
+    switch(ret) {
+    case -4: return CANCELED;
+    case -3: return DEVICE_BUSY;
+    case -2: return IO_ERROR;
+    case -1: return DEVICE_NOT_FOUND;
+    case  0: return SUCCEDED;
+    default: return FAILED;
     }
 }
 

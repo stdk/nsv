@@ -364,6 +364,27 @@ void handle_get_update(adbk_command* cmd)
      }
 }
 
+int md5_firmware_file(const char* filename, void* dst, size_t len)
+{
+    const char* md5sum_format = "/bin/md5sum %s/%s";
+    const char* firmware_dir = getenv("FIRMWARE_DIR");
+
+    char popen_cmd[512] = {0};
+    snprintf(popen_cmd,sizeof(popen_cmd),md5sum_format,firmware_dir,filename);
+
+    FILE* md5 = popen(popen_cmd,"r");
+    if(!md5) {
+        xlog2("adbk_update_cmd popen[%s]",strerror(errno));
+        return -1;
+    }
+    fread(dst,1,len,md5);
+    fclose(md5);
+
+    xlog2("md5[%.*s]",len,(char*)dst);
+
+    return 0;
+}
+
 int adbk_update_cmd(char adbk_num,const char* filename,DC* container)
 {
     xlog2("adbk_update_cmd[%i][%s]",adbk_num,filename);
@@ -371,6 +392,7 @@ int adbk_update_cmd(char adbk_num,const char* filename,DC* container)
     uint32_t server_ip = 0;
     if(-1 == get_ip("eth0",&server_ip)) return -1;
 
+    //generate adbk ip from server ip and adbk index
     uint32_t adbk_addr = server_ip;
     ((char*)&adbk_addr)[3] = adbk_num;
 
@@ -389,7 +411,11 @@ int adbk_update_cmd(char adbk_num,const char* filename,DC* container)
         snprintf(block.filename,sizeof(block.filename),firmware_url_format,str_server_ip,filename);
         xlog2("adbk_update_cmd url[%s]",block.filename);
 
-        const char* firmware_dir = getenv("FIRMWARE_DIR");
+        if( md5_firmware_file(filename,block.md5,sizeof(block.md5)) < 0) {
+            return -2;
+        }
+
+        /*const char* firmware_dir = getenv("FIRMWARE_DIR");
         char popen_cmd[200] = {0};
         snprintf(popen_cmd,sizeof(popen_cmd),"/bin/md5sum %s/%s",firmware_dir,filename);
 
@@ -401,7 +427,7 @@ int adbk_update_cmd(char adbk_num,const char* filename,DC* container)
         fread(block.md5,32,1,md5_file);
         fclose(md5_file);
 
-        xlog2("md5[%.*s]",32,block.md5);
+        xlog2("md5[%.*s]",32,block.md5);*/
 
         execute<handle_get_update>(device,container,&updateCmd,&block);
 

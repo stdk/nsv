@@ -14,6 +14,7 @@
 #include "log.h"
 
 //man netdevice
+//there is another way to implement this function: via getifaddrs(3)
 int get_ip(const char * ifname,uint32_t *ip)
 {
 	int fd = socket(PF_INET,SOCK_DGRAM,0);
@@ -22,7 +23,7 @@ int get_ip(const char * ifname,uint32_t *ip)
 		return -1;
 	}
 	
-	#define MAX_IFS 3
+        const size_t MAX_IFS = 3;
 	char ifreq_buf[sizeof(ifreq)*MAX_IFS];
 	ifconf ifconfig;
 	ifconfig.ifc_len = sizeof(ifreq_buf);
@@ -38,7 +39,7 @@ int get_ip(const char * ifname,uint32_t *ip)
 	}
 
 	
-	for(size_t i=0;i<ifconfig.ifc_len/sizeof(ifreq);i++)
+        for(size_t i = 0; i < MAX_IFS; i++)
 	{
 		ifreq *current = &ifconfig.ifc_req[i];
                 if(0 != strcmp(ifname,current->ifr_name)) continue;
