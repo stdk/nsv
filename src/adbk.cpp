@@ -259,8 +259,9 @@ public:
         }
 
         if(device_data* device = cmd->container->deviceByAddr(cmd->ip)) {
-           snprintf(device->version,sizeof(device->version),"%s%s",answer->state.sw_ver,
-                                                                   answer->state.card.hw_ver+3);
+           snprintf(device->version,sizeof(device->version),"%s.%s",answer->state.sw_ver,
+                    answer->state.card.hw_ver+strlen(answer->state.card.hw_ver)-2);
+
            uint64_t sn = 0;
            memcpy(&sn,answer->state.card.sn,sizeof(sn));
 

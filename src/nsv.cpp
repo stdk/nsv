@@ -17,7 +17,6 @@
 #include <log.h>
 
 #define HTTP_PORT	4000
-#define RESTART_COMMAND "sh $RESTART"
 	
 /* ---------------------------------------- */	
 

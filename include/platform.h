@@ -10,6 +10,4 @@ namespace platform
     void red_led_switch();
 };
 
-
-
 #endif //PLATFORM_H

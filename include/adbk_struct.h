@@ -78,9 +78,9 @@ struct __attribute__ ((packed)) SBillAcceptor	// 1 + 1 + 4 = 6
 
 struct __attribute__ ((packed)) SCardReader		// 1 + 1 + 8 + 8 = 18
 {
-  bool  enabled;
-  char  err_code;
-  unsigned char hw_ver[8];
+  bool enabled;
+  char err_code;
+  char hw_ver[8];
   unsigned char sn[8];
 };
 
@@ -103,7 +103,7 @@ struct __attribute__ ((packed)) SStateBlock		// 32 + 10 + 1 + 4 + 1
   SCardReader   card;		// 18
   SVideoSystem  video;		// 2
   SPrinter      printer;	// 6
-  unsigned char sw_ver[10];
+  char sw_ver[10];
   char state;	// текущее состояние см. const stXXXXXX
 };
 
