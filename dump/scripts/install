@@ -26,6 +26,7 @@ ln -sf /mnt/cf/nsv/ui /www/apache/htdocs/
 #ln -s /mnt/cf/storage/events_cash.bin /www/apache/htdocs/events_cash.bin
 ln -sf /tmp/events.bin /www/apache/htdocs/events.bin
 ln -sf /tmp/events_cash.bin /www/apache/htdocs/events_cash.bin
+ln -sf /tmp/firmware /www/apache/htdocs/firmware
 
 echo "Install dropbear..."
 mkdir /etc/dropbear

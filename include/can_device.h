@@ -18,6 +18,7 @@ struct device_data
     void error(uint32_t event_id);
     int active() const;
     int new_last_event_id(uint32_t new_id);
+
     inline uint16_t get_addr() const {
         if(get_type() == TYPE_ADBK) {
             return 0x200 + ((char*)&addr)[3];

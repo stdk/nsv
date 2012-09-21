@@ -45,12 +45,10 @@ const char* const Errors[] = {
 static const char* date_cmd = "/bin/date";
 static const char* setrtc_cmd = "/sbin/ts7500ctl";
 static char* const setrtc_args[] = {"ts7500ctl","--setrtc",0};
-#define SET_RTC "ts7500ctl --setrtc" 
 #elif PLATFORM_TS7260
 static const char* date_cmd = "/bin/date";
 static const char* setrtc_cmd = "hwclock";
 static char* const setrtc_args[] = {"hwclock","-w",0};
-#define SET_RTC "hwclock -w"
 #endif
 
 //Args requirements:
@@ -113,7 +111,7 @@ static int firmware_update(uint32_t addr,const char* base_filename,const char* f
 {
     char* addr_bytes = (char*)&addr;
     int ret = 0;
-    if(addr_bytes[1] == 2) {
+    if(addr_bytes[1] == 2) { // check for device type
         ret = adbk_update_cmd(addr_bytes[0],base_filename,container);
     } else {
         ret = start_firmware_write(addr,full_filename,container);
@@ -159,8 +157,13 @@ static int upload(evkeyvalq * get,evkeyvalq * post,DC* container)
 
         char* firmware_dir = getenv("FIRMWARE_DIR");
         char full_filename[200]={0};
-        snprintf(full_filename,sizeof(full_filename)-1,"%s/%s",firmware_dir,base_filename);
+        snprintf(full_filename,sizeof(full_filename),"%s/%s",firmware_dir,base_filename);
 
+        // note: this addr != device::addr for every possible case
+        // addr == device::addr only when device belongs to CAN network
+        // for adbk devices we get something like "20C" or "20F" here and must convert it
+        // to a correct device::addr format.
+        // (firmware_update performs this conversion detecting adbk addr).
         uint32_t addr = 0;
         if( sscanf(str_addr,"%X",&addr) == 1 ) { //correctly parsed 1 item
 
@@ -169,6 +172,7 @@ static int upload(evkeyvalq * get,evkeyvalq * post,DC* container)
                 return firmware_update(addr,base_filename,full_filename,container);
             }
 
+            // note: stoplist_update designed to support only CAN network devices
             const char *stoplist = "stoplist";
             if(strncmp(type,stoplist,sizeof(stoplist)) == 0) {
                 return stoplist_update(addr,base_filename,full_filename,container);
@@ -204,7 +208,7 @@ static int add_adbk(evkeyvalq * get,evkeyvalq * post,DC* container)
     return FAILED;
 }
 
-static int remove_device(evkeyvalq * get, evkeyvalq * post,DC* container)
+static int remove_device(evkeyvalq * /*get*/, evkeyvalq * post,DC* container)
 {
     const char* str_sn = evhttp_find_header(post,"sn");
 
@@ -280,9 +284,9 @@ static const struct command
                 { "set-time"         ,set_time },           // (string time)
                 { "upload"           ,upload },             // (hex addr,string filename)
                 { "remove-device"    ,remove_device },      // (hex sn)
-                { "add-adbk"         ,add_adbk },
-                { "set-can-mode"     ,set_can_mode },
-                { "flush"            ,flush },
+                { "add-adbk"         ,add_adbk },           // (string addr)
+                { "set-can-mode"     ,set_can_mode },       // (int mode)
+                { "flush"            ,flush },              // ()
 };
 const int CommandsSize = sizeof(Commands)/sizeof(command);
 
@@ -301,13 +305,13 @@ void http_cmd(evhttp_request *request,void *ctx)
 	xlog2("http_cmd request: %s:%d URI: %s",request->remote_host,request->remote_port,request->uri);	
 	
         http_config *cfg = (http_config*)ctx;
-        DC* container = cfg->container;
 
 	evbuffer *evb = evbuffer_new();
 	
 	evkeyvalq get;
 	evhttp_parse_query(request->uri,&get);
-	const char* cmd_name = evhttp_find_header(&get,"name");
+
+        const char *cmd_name = evhttp_find_header(&get,"name");
 	if(!cmd_name) {
 		evb_print_err(evb,UNSPECIFIED);
 	} else {
@@ -317,22 +321,19 @@ void http_cmd(evhttp_request *request,void *ctx)
 			if(size_t size = EVBUFFER_LENGTH(request->input_buffer)) {
                                 has_post_data = true;
 
-                                char * post_buf = (char*)malloc(size+2);//with first ? and last \0
-				post_buf[0]='?';//must be present to make evhttp_parse_query happy
-				post_buf[size+1]='\0'; 
+                                char *post_buf = (char*)malloc(size + 2);//with first ? and last \0
+                                post_buf[0] = '?'; //must be present to make evhttp_parse_query happy
+                                post_buf[size+1] = '\0';
 				memcpy(post_buf+1,EVBUFFER_DATA(request->input_buffer),size);
 
 				evhttp_parse_query(post_buf,&post);
 				free(post_buf);
 			}
 
-                        int result = action(&get,&post,container);
-                        xlog2("after action");
+                        int result = action(&get,&post,cfg->container);
                         evb_print_err(evb,result);
-                        xlog2("after print_err");
 
                         if(has_post_data) evhttp_clear_headers(&post);
-                        xlog2("after clear_headers");
 		} else {
 			evb_print_err(evb,UNKNOWN);
 		}		

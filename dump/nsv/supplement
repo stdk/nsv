@@ -8,6 +8,7 @@ from httplib import HTTPConnection
 from string import Template
 from struct import pack
 from os import system
+from tempfile import NamedTemporaryFile
 
 HOST = getoutput("ifconfig").split("\n")[1].split()[1][5:]
 PORT     = 4001
@@ -87,8 +88,7 @@ class BaseRequestHandler(BaseHTTPRequestHandler):
 
 class CustomFieldStorage(FieldStorage):
  def make_file(self,binary=None):
-  import tempfile
-  return tempfile.NamedTemporaryFile("w+b",dir=FIRMWARE_PATH,delete=False)
+  return NamedTemporaryFile("w+b",dir=FIRMWARE_PATH,delete=False)
 
 class RequestHandler(BaseRequestHandler):  
  def update_request(self,addr,filename,file_type):
@@ -120,19 +120,22 @@ class RequestHandler(BaseRequestHandler):
  def do_POST(self):
   system('rm -f /tmp/firmware/*')
   try:
-   #form = FieldStorage(fp=self.rfile,headers=self.headers,environ={'REQUEST_METHOD':'POST','CONTENT_TYPE':self.headers['Content-Type'] })
-   form = CustomFieldStorage(fp=self.rfile,headers=self.headers,environ={'REQUEST_METHOD':'POST','CONTENT_TYPE':self.headers['Content-Type'] })
+   form = CustomFieldStorage(fp=self.rfile,headers=self.headers,environ={
+    'REQUEST_METHOD':'POST',
+    'CONTENT_TYPE':self.headers['Content-Type'],
+    'CONTENT_LENGTH':self.headers['Content-Length']
+   })
   except IOError:
    return self.redirect('/?result=-7')
   
   stoplist_ext = ['txt']
-  firmware_ext = ['dat','bin','enc','chx','exe','ini']
+  firmware_ext = ['dat','bin','enc','chx','exe','ini','spl','txt']
   valid_ext = stoplist_ext + firmware_ext
 
   try:
    addr = form['addr'].value
    firmware = form['firmware']
-   int(addr,16)
+   dev_type = { 2: 'adbk' }.get(int(addr,16) >> 8,'can')
    assert(firmware.filename)
    extension = firmware.filename.split('.')[-1].lower()
    assert(extension in valid_ext)
@@ -142,20 +145,30 @@ class RequestHandler(BaseRequestHandler):
   except IndexError: return self.redirect('/?result=-6&addr=%s' % (addr))
 
   try:
-   if extension in stoplist_ext: 
+   target_filename = FIRMWARE_PATH + firmware.filename
+   if dev_type == 'can' and extension in stoplist_ext: 
     stoplist = prepare_stoplist(firmware.file.read())
-    open(FIRMWARE_PATH+firmware.filename,'wb').write(stoplist)  
-   else:
-    from os import rename,chmod
-    target_filename = FIRMWARE_PATH + firmware.filename
-    rename(firmware.file.name,target_filename)
-    chmod(target_filename,0744)
+    open(target_filename,'wb').write(stoplist)  
+   else:    
+    # There is special behaviour in python 2.7 (only ?) FieldStorage class.
+    # It doesnt create file using make_file when its size is less than 1000,
+    # using StringIO object instead.
+    # But since we need file with real filename in FIRMWARE_PATH anyway,
+    # we should create this file and dump there contents of current file object.
+    # Criteria for this can be either ininstance(firmware.file,NamedTemporaryFile)
+    # or hasattr(firmware.file,"name")
+    if hasattr(firmware.file,'name'): 
+     from os import rename,chmod
+     rename(firmware.file.name,target_filename)
+     chmod(target_filename,0744)
+    else:
+     open(target_filename,'wb').write(firmware.file.read())
   except IOError: return self.redirect('/?result=-5')
   except ValueError: return self.redirect('/?result=-8')
   
   file_type = 'unknown'  
+  if dev_type == 'can' and extension in stoplist_ext: file_type = 'stoplist'
   if extension in firmware_ext: file_type = 'firmware'
-  if extension in stoplist_ext: file_type = 'stoplist'
   
   result = self.update_request(addr,firmware.filename,file_type)
   self.redirect('/?addr=%s&result=%s' % (addr,result))
