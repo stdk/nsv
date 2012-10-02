@@ -22,7 +22,7 @@ DEV_URL = 'devices'
 CMD_URL = 'cmd'
 DEV_ID = '#dev_data'
 TABS_ID = '#tabs'
-DATEPICKER_ID = '#date'
+DATEPICKER_ID = '#datepicker'
 
 function addTab(tab_id,name,content)
 {
