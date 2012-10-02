@@ -31,8 +31,8 @@ function addTab(tab_id,name,content)
 }
 
 function initDateTime(d)
-{
-	$(DATEPICKER_ID).datepicker("setDate",new Date())
+{ 
+	$(DATEPICKER_ID).datepicker("setDate",d)
 	$("#hours").val(d.getHours())
 	$("#minutes").val(d.getMinutes())	
 }
@@ -51,8 +51,11 @@ function sendCommand(command_name,args,success_callback)
 function initPage()
 {
 	$(TABS_ID).tabs()
-	$(DATEPICKER_ID).datepicker({ dateFormat: 'yy-mm-dd' })
-	
+
+	var x =$(DATEPICKER_ID).datepicker( { 
+		dateFormat: 'yy-mm-dd',
+	})
+
 	$("#button-add-adbk").click(function() {
 		var addr = $("#adbk-addr").val()
 		sendCommand('add-adbk',{ addr : addr },function(data) {
@@ -67,7 +70,6 @@ function initPage()
 	$("#refresh-datetime").click(function() { 
 		initDateTime(new Date())
 	})
-	initDateTime(new Date())
 
 	$("#set-datetime").click(function() {
 		var date = $(DATEPICKER_ID).datepicker('getDate')
@@ -140,6 +142,8 @@ function initData(update_interval)
     },update_interval)
 }
 
-initPage()
-initData(4000)
+$(function() {
+	initPage()
+	initData(4000)
+})
 
