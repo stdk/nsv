@@ -167,8 +167,8 @@ class RequestHandler(BaseRequestHandler):
   except ValueError: return self.redirect('/?result=-8')
   
   file_type = 'unknown'  
-  if dev_type == 'can' and extension in stoplist_ext: file_type = 'stoplist'
   if extension in firmware_ext: file_type = 'firmware'
+  if dev_type == 'can' and extension in stoplist_ext: file_type = 'stoplist'
   
   result = self.update_request(addr,firmware.filename,file_type)
   self.redirect('/?addr=%s&result=%s' % (addr,result))
