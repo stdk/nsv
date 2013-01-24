@@ -129,7 +129,7 @@ class RequestHandler(BaseRequestHandler):
    return self.redirect('/?result=-7')
   
   stoplist_ext = ['txt']
-  firmware_ext = ['dat','bin','enc','chx','exe','ini','stl','txt']
+  firmware_ext = ['dat','bin','enc','chx','exe','ini','stl','txt','dll']
   valid_ext = stoplist_ext + firmware_ext
 
   try:
