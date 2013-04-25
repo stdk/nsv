@@ -67,9 +67,10 @@ static int plan(DC&)
 }
 
 extern int execute_file(const char* path,char* const * args);
-static int backup(DC&)
+static int backup(DC& dc)
 {
     xlog2("backup");
+    save_devices(dc);
     const char* path = getenv("BACKUP_SCRIPT");
     char* const args[] = { 0 };
     return execute_file(path,args);
@@ -80,7 +81,7 @@ static timed_event service_events[] = {
     { {    0, 0},{    5, 0}, plan }, //regular service function that plans execution of can events
     { { 3600, 0},{ 3600, 0}, check_restart },
     { {    0, 0},{    3, 0}, adbk_service  },
-    { {  600, 0},{  600, 0}, backup }
+    { {   60, 0},{ 1200, 0}, backup }
 };
 
 
