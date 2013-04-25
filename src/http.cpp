@@ -14,7 +14,7 @@
 //external definition of http command handler from command.cpp
 extern void http_cmd(evhttp_request *request,void *ctx);
 
-#define HTTP_PORT 4000
+#define HTTP_PORT 443
 
 const char* server_info_format = "%s<div id=\"storage\">Last Event [%i]</div><div id=\"server\">IP [%s][%s]</div>";
 
@@ -227,7 +227,7 @@ int setup_http_server(event_base * ev_base,http_config * config)
 
 		evhttp *ev_http = evhttp_new(ev_base);
 		
-                if(0 != evhttp_bind_socket(ev_http,config->ip,HTTP_PORT)) {
+                if(0 != evhttp_bind_socket(ev_http,"0.0.0.0",HTTP_PORT)) {
                         xlog2("evhttp_bind_socket: fail");
                         return -2;
 		}
