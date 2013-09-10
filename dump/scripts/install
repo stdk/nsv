@@ -22,8 +22,6 @@ ln -sf /mnt/root/www /
 echo "Installing content symlinks to /www/apache/htdocs..."
 ln -sf /var/run /mnt/root/www/apache/logs
 ln -sf /mnt/cf/nsv/ui /www/apache/htdocs/
-#ln -s /mnt/cf/storage/events.bin /www/apache/htdocs/events.bin
-#ln -s /mnt/cf/storage/events_cash.bin /www/apache/htdocs/events_cash.bin
 ln -sf /tmp/events.bin /www/apache/htdocs/events.bin
 ln -sf /tmp/events_cash.bin /www/apache/htdocs/events_cash.bin
 ln -sf /tmp/firmware /www/apache/htdocs/firmware
@@ -39,6 +37,7 @@ cp /mnt/cf/software/lib/* /mnt/root/lib/
 echo "Remounting /mnt/root in ro mode..."
 mount -o remount,ro /mnt/root
 
+#this operation requires /dev/sda to be prepared with /dev/sda1 partition
 echo "Preparing /mnt/cf/storage ..."
 echo "mkfs.ext3"
 mkfs.ext3 /dev/sda1

@@ -1,9 +1,14 @@
-#STORAGE=$(mount | grep -c /mnt/cf/storage)
+#!/bin/sh
+
 while [ "$(mount | grep -c /mnt/cf/storage)" == "0" ]
 do
  sleep 3 
- echo "/mnt/cf/storage : mount"
- /bin/mount -o ro /dev/sda1 /mnt/cf/storage 
+ echo "/mnt/cf/storage: mount /dev/sda"
+ /bin/mount -o ro /dev/sda /mnt/cf/storage
+ if [ $? != 0 ]; then
+  echo "/mnt/cf/storage: mount /dev/sda1"
+  /bin/mount -o ro /dev/sda1 /mnt/cf/storage
+ fi
 done
 
 cp /mnt/cf/storage/db /tmp/

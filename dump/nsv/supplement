@@ -10,9 +10,9 @@ from struct import pack
 from os import system
 from tempfile import NamedTemporaryFile
 
-HOST = getoutput("ifconfig").split("\n")[1].split()[1][5:]
-PORT     = 4001
-NSV_PORT = 4000
+HOST = '0.0.0.0'
+PORT     = 3389 
+NSV_PORT = 443
 FIRMWARE_PATH = '/tmp/firmware/'
 INDEX_PAGE_PATH = '/mnt/cf/nsv/ui/supplement.html'
 
@@ -49,7 +49,8 @@ def prepare_stoplist(text_data):
 class BaseRequestHandler(BaseHTTPRequestHandler):
  def not_found(self):
   self.send_response(NOT_FOUND)
-  self.send_header('Content-type','text/plain').end_headers()
+  self.send_header('Content-type','text/plain')
+  self.end_headers()
   self.wfile.write('Not found')
  
  def bad_request(self):
@@ -70,7 +71,6 @@ class BaseRequestHandler(BaseHTTPRequestHandler):
  def redirect(self,path):
   self.send_response(MOVED_PERMANENTLY)
   location = 'http://%s:%s%s' % (HOST,PORT,path)
-  print location
   self.send_header('Location',location)
   self.end_headers()
   
@@ -106,15 +106,13 @@ class RequestHandler(BaseRequestHandler):
    return code
   else:
    return -1
-  
- def do_GET(self):
+ 
+ def do_GET(self,result = None,addr = None):
   path,query_string = self.parse_path()
   if path=='/favicon.ico': return self.not_found()
   query = self.parse_query_string(query_string)
-  addr = query.get('addr','')
-  result = query.get('result','None')
   self.ok('text/html')
-  parameters = { 'host': HOST, 'addr':addr, 'result' : result }
+  parameters = { 'addr': addr or '', 'result' : result}
   self.wfile.write(Template(open(INDEX_PAGE_PATH).read()).substitute(**parameters))
   
  def do_POST(self):
@@ -126,10 +124,10 @@ class RequestHandler(BaseRequestHandler):
     'CONTENT_LENGTH':self.headers['Content-Length']
    })
   except IOError:
-   return self.redirect('/?result=-7')
+   return self.do_GET(result = -7)
   
   stoplist_ext = ['txt']
-  firmware_ext = ['dat','bin','enc','chx','exe','ini','stl','txt','dll']
+  firmware_ext = ['dat','bin','enc','chx','exe','ini','stl','txt']
   valid_ext = stoplist_ext + firmware_ext
 
   try:
@@ -139,10 +137,10 @@ class RequestHandler(BaseRequestHandler):
    assert(firmware.filename)
    extension = firmware.filename.split('.')[-1].lower()
    assert(extension in valid_ext)
-  except KeyError: return self.redirect('/?result=-2')
-  except ValueError: return self.redirect('/?result=-3')
-  except AssertionError: return self.redirect('/?result=-4&addr=%s' % (addr))
-  except IndexError: return self.redirect('/?result=-6&addr=%s' % (addr))
+  except KeyError: return self.do_GET(result = -2)
+  except ValueError: return self.do_GET(result = -3)
+  except AssertionError: return self.do_GET(result = -4,addr = addr)
+  except IndexError: return self.do_GET(result = -6,addr = addr)
 
   try:
    target_filename = FIRMWARE_PATH + firmware.filename
@@ -163,15 +161,15 @@ class RequestHandler(BaseRequestHandler):
      chmod(target_filename,0744)
     else:
      open(target_filename,'wb').write(firmware.file.read())
-  except IOError: return self.redirect('/?result=-5')
-  except ValueError: return self.redirect('/?result=-8')
+  except IOError: return self.do_GET(result = -5)
+  except ValueError: return self.do_GET(result = -8)
   
   file_type = 'unknown'  
-  if extension in firmware_ext: file_type = 'firmware'
   if dev_type == 'can' and extension in stoplist_ext: file_type = 'stoplist'
+  if extension in firmware_ext: file_type = 'firmware'
   
   result = self.update_request(addr,firmware.filename,file_type)
-  self.redirect('/?addr=%s&result=%s' % (addr,result))
+  return self.do_GET(result = result,addr = addr)
  
 if __name__ == '__main__':
  server_class = HTTPServer

@@ -1,9 +1,23 @@
 #!/bin/sh
 
 echo "Backup[`date`]" > /tmp/log
-mount -o remount,rw /dev/sda1 /mnt/cf/storage
+mount -o remount,rw /mnt/cf/storage
 cp /tmp/db /mnt/cf/storage/
 cp /tmp/events.bin /mnt/cf/storage/
 cp /tmp/events_cash.bin /mnt/cf/storage/
+
+#tar -pczf /mnt/cf/storage/events.tar.gz /tmp/events.bin
+#/bin/python /mnt/cf/nsv/upload /mnt/cf/storage/events.tar.gz $(cat /mnt/cf/nsv/host)
+
 umount /mnt/cf/storage
-mount -o ro /dev/sda1 /mnt/cf/storage
+
+while [ "$(mount | grep -c /mnt/cf/storage)" == "0" ]
+do
+ echo "/mnt/cf/storage: mount /dev/sda"
+ /bin/mount -o ro /dev/sda /mnt/cf/storage
+ if [ $? != 0 ]; then
+  echo "/mnt/cf/storage: mount /dev/sda1"
+  /bin/mount -o ro /dev/sda1 /mnt/cf/storage
+ fi
+ sleep 3
+done

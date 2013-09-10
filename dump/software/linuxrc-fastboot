@@ -96,7 +96,7 @@ fi
 
 (
   mount -t tmpfs none /dev/shm
-  ifconfig eth0 10.0.2.246
+  ifconfig eth0 10.0.2.248
   telnetd
   mount -t tmpfs tmpfs /tmp
 
@@ -148,8 +148,6 @@ fi
   /mnt/root/bin/dropbear 
   /mnt/cf/nsv/startup &
   /mnt/cf/nsv/supplement &
-#  /mnt/cf/stoppark-start &
-#  /mnt/cf/startup-ksv &
   
 ) </dev/null >/dev/null 2>&1 &
 
