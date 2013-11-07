@@ -121,13 +121,20 @@ public:
             return -1;
         }
 
-        if( num > 9 ) {
-            xlog2("packet num[%u] > 9 : incorrect",num);
+        if(num > 9) {
+            xlog2("packet num[%i] > 9 : incorrect",num);
             return -1;
         }
 
         //here we assume that packet is correct enough
         char* data_pos = (char*)&event + pos;
+        if(data_pos + msg->length > (char*)&event + sizeof(event)) {
+            xlog2("possible event buffer overflow on packet[%i] with len[%i]", num, msg->length);
+            device->current_event_id += 1;
+            xlog2("skipping event number for device[%X] to [%i]", device->addr, device->current_event_id);
+            return -1;
+        }
+
         memcpy(data_pos,msg->data,msg->length);
         pos += msg->length;
 
